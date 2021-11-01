@@ -1,0 +1,37 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // J-Link
+            "type": "cortex-debug",
+            "request": "launch",
+            "name": "Debug (J-Link)",
+            "cwd": "${workspaceRoot}",
+            "executable": "${workspaceRoot}/build/fanboard.elf",
+            "rtos": "FreeRTOS",
+            "servertype": "jlink",
+            "device": "CC3220SF",
+            "interface": "swd",
+            "serialNumber": "",
+            "jlinkscript": "/Applications/SEGGER/Ozone/Ozone.app/Contents/MacOS/Lib/Devices/TI/TI_CC322x.pex",
+            "runToMain": false,
+            "showDevDebugOutput": false,
+            "svdFile": "${workspaceRoot}/svd/CC32xxSF.svd"
+        },
+        {
+            // OpenOCD with XDS110
+            "type": "cortex-debug",
+            "request": "launch",
+            "name": "Debug (OpenOCD XDS110)",
+            "cwd": "${command:cmake.buildDirectory}",
+            "servertype": "openocd",
+            "executable": "fanboard.elf",
+            "rtos": "FreeRTOS",
+            "searchDir": [ "/usr/local/share/open-ocd/scripts" ],
+            "configFiles": [ "board/ti_cc3220sf_launchpad.cfg" ],
+            "runToMain": false,
+            "showDevDebugOutput": false,
+            "svdFile": "${workspaceRoot}/svd/CC32xxSF.svd"
+        }
+    ]
+}

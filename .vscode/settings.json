@@ -1,0 +1,50 @@
+{
+    "search.exclude": {
+        "**/build": true,
+        "svd": true
+    },
+    "files.exclude": {
+        "**/build": true
+    },
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.default.intelliSenseMode": "gcc-arm",
+    "C_Cpp.default.compilerPath": "/Applications/ARM/bin/arm-none-eabi-gcc",
+    "C_Cpp.default.cStandard": "c11",
+    "rewrap.wrappingColumn": 72,
+    "cortex-debug.armToolchainPath": "/Applications/ARM/bin",
+    "cortex-debug.JLinkGDBServerPath": "/Applications/SEGGER/JLink/JLinkGDBServerCLExe",
+    "cortex-debug.openocdPath": "/usr/local/bin/openocd",
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.preferredGenerators": [ "Ninja" ],
+    "cmake.configureOnOpen": true,
+    "cmake.configureSettings": {
+        "SIMPLELINK_CC32XX_SDK_DIR": "/Applications/TI/simplelink_cc32xx_sdk_5_20_00_06",
+        "CMAKE_VERBOSE_MAKEFILE": true
+    },
+    "files.associations": {
+        "powercc32xx.h": "c",
+        "hap+internal.h": "c",
+        "simplelink.h": "c",
+        "happlatformmfitokenauth+init.h": "c",
+        "hapcrypto.h": "c",
+        "memory_buffer_alloc.h": "c",
+        "stddef.h": "c",
+        "happlatformaccessorysetup+init.h": "c",
+        "typeinfo": "c",
+        "board.h": "c",
+        "gpio.h": "c",
+        "led.h": "c",
+        "udma.h": "c",
+        "prcm.h": "c",
+        "pin.h": "c",
+        "freertos.h": "c",
+        "happlatformtimer+init.h": "c",
+        "happlatformtcpstreammanager+init.h": "c",
+        "utilities.h": "c",
+        "crc.h": "c",
+        "hw_memmap.h": "c",
+        "hw_dthe.h": "c",
+        "uarttask.h": "c",
+        "happlatform+init.h": "c"
+    }
+}
