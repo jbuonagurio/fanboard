@@ -3,9 +3,9 @@
     "configurations": [
         {
             // J-Link
+            "name": "Debug (J-Link)",
             "type": "cortex-debug",
             "request": "launch",
-            "name": "Debug (J-Link)",
             "cwd": "${workspaceRoot}",
             "executable": "${workspaceRoot}/build/fanboard.elf",
             "rtos": "FreeRTOS",
@@ -13,23 +13,34 @@
             "device": "CC3220SF",
             "interface": "swd",
             "serialNumber": "",
-            "jlinkscript": "/Applications/SEGGER/Ozone/Ozone.app/Contents/MacOS/Lib/Devices/TI/TI_CC322x.pex",
-            "runToMain": false,
+            "runToEntryPoint": "resetISR",
             "showDevDebugOutput": false,
-            "svdFile": "${workspaceRoot}/svd/CC32xxSF.svd"
+            "svdFile": "${workspaceRoot}/svd/CC32xxSF.svd",
+            "rttConfig": {
+                "enabled": true,
+                "address": "auto",
+                "decoders": [
+                    {
+                        "port": 0,
+                        "type": "console",
+                        "noprompt": true,
+                        "clear": false
+                    }
+                ]
+            }
         },
         {
             // OpenOCD with XDS110
+            "name": "Debug (OpenOCD XDS110)",
             "type": "cortex-debug",
             "request": "launch",
-            "name": "Debug (OpenOCD XDS110)",
             "cwd": "${command:cmake.buildDirectory}",
             "servertype": "openocd",
             "executable": "fanboard.elf",
             "rtos": "FreeRTOS",
             "searchDir": [ "/usr/local/share/open-ocd/scripts" ],
             "configFiles": [ "board/ti_cc3220sf_launchpad.cfg" ],
-            "runToMain": false,
+            "runToEntryPoint": "resetISR",
             "showDevDebugOutput": false,
             "svdFile": "${workspaceRoot}/svd/CC32xxSF.svd"
         }

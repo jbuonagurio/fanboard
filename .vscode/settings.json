@@ -22,29 +22,6 @@
         "CMAKE_VERBOSE_MAKEFILE": true
     },
     "files.associations": {
-        "powercc32xx.h": "c",
-        "hap+internal.h": "c",
-        "simplelink.h": "c",
-        "happlatformmfitokenauth+init.h": "c",
-        "hapcrypto.h": "c",
-        "memory_buffer_alloc.h": "c",
-        "stddef.h": "c",
-        "happlatformaccessorysetup+init.h": "c",
-        "typeinfo": "c",
-        "board.h": "c",
-        "gpio.h": "c",
-        "led.h": "c",
-        "udma.h": "c",
-        "prcm.h": "c",
-        "pin.h": "c",
-        "freertos.h": "c",
-        "happlatformtimer+init.h": "c",
-        "happlatformtcpstreammanager+init.h": "c",
-        "utilities.h": "c",
-        "crc.h": "c",
-        "hw_memmap.h": "c",
-        "hw_dthe.h": "c",
-        "uarttask.h": "c",
-        "happlatform+init.h": "c"
+        "*.svd": "xml"
     }
 }

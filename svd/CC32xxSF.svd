@@ -11,8 +11,8 @@
     <name>CM4</name>
     <revision>r0p1</revision>
     <endian>little</endian>
-    <mpuPresent>true</mpuPresent>
-    <fpuPresent>true</fpuPresent>
+    <mpuPresent>false</mpuPresent>
+    <fpuPresent>false</fpuPresent>
     <nvicPrioBits>3</nvicPrioBits>
     <vendorSystickConfig>false</vendorSystickConfig>
   </cpu>
