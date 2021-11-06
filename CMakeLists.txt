@@ -137,6 +137,7 @@ add_library(segger_rtt OBJECT
 )
 
 target_include_directories(segger_rtt PUBLIC "${SEGGER_RTT_DIR}/RTT")
+target_include_directories(segger_rtt PUBLIC "${SEGGER_RTT_DIR}/Config")
 
 #----------------------------------------------------------------------
 # Target: FreeRTOS
