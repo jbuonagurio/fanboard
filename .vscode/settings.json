@@ -1,16 +1,55 @@
 {
     "search.exclude": {
+        ".cache/**": true,
         "**/build": true,
         "svd": true
     },
     "files.exclude": {
+        ".cache/**": true,
         "**/build": true
     },
+    "files.associations": {
+        "*.svd": "xml",
+        "mqtttask.h": "c",
+        "mqttclient.h": "c",
+        "hw_dthe.h": "c",
+        "gpiocc32xx.h": "c",
+        "gpio.h": "c",
+        "freertos.h": "c",
+        "happlatformrunloop+init.h": "c",
+        "happlatformservicediscovery+init.h": "c",
+        "hap.h": "c",
+        "semphr.h": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c",
+        "ranges": "c",
+        "timers.h": "c",
+        "happlatformfilehandle.h": "c",
+        "happlatform+init.h": "c",
+        "happlatform.h": "c",
+        "slnetutils.h": "c",
+        "slnetconn.h": "c",
+        "slnetif.h": "c",
+        "errnoutil.h": "c",
+        "unistd.h": "c",
+        "stdlib.h": "c",
+        "signal.h": "c",
+        "simplelink.h": "c",
+        "sl_socket.h": "c",
+        "slneterr.h": "c",
+        "happlatformlog+init.h": "c",
+        "slnetsock.h": "c",
+        "system_error": "c",
+        "prcm.h": "c",
+        "hw_types.h": "c",
+        "queue.h": "c"
+    },
+    "rewrap.wrappingColumn": 72,
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "C_Cpp.default.intelliSenseMode": "gcc-arm",
     "C_Cpp.default.compilerPath": "/Applications/ARM/bin/arm-none-eabi-gcc",
     "C_Cpp.default.cStandard": "c11",
-    "rewrap.wrappingColumn": 72,
     "cortex-debug.armToolchainPath": "/Applications/ARM/bin",
     "cortex-debug.JLinkGDBServerPath": "/Applications/SEGGER/JLink/JLinkGDBServerCLExe",
     "cortex-debug.openocdPath": "/usr/local/bin/openocd",
@@ -18,10 +57,7 @@
     "cmake.preferredGenerators": [ "Ninja" ],
     "cmake.configureOnOpen": true,
     "cmake.configureSettings": {
-        "SIMPLELINK_CC32XX_SDK_DIR": "/Applications/TI/simplelink_cc32xx_sdk_5_20_00_06",
+        "SIMPLELINK_CC32XX_SDK_DIR": "/Applications/TI/simplelink_cc32xx_sdk_5_30_00_08",
         "CMAKE_VERBOSE_MAKEFILE": true
-    },
-    "files.associations": {
-        "*.svd": "xml"
     }
 }
