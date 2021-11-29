@@ -29,12 +29,6 @@ typedef enum BOARD_I2CName {
     BOARD_I2CCOUNT
 } BOARD_I2CName;
 
-typedef enum BOARD_GPIOName {
-    BOARD_GPIO0,        // GPIO09, Yellow LED
-    BOARD_GPIO1,        // GPIO10, Blue LED
-    BOARD_GPIOCOUNT
-} BOARD_GPIOName;
-
 typedef enum BOARD_PWMName {
     BOARD_PWM0,         // GPIO09, uses Timer2B for PWM.
     BOARD_PWM1,         // GPIO10, uses Timer3A for PWM.

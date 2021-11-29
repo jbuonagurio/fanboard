@@ -96,18 +96,54 @@ const UDMACC32XX_Config UDMACC32XX_config = {
 // GPIO
 //--------------------------------------------------------------------
 
-GPIO_PinConfig gpioPinConfigs[] = {
-    GPIOCC32XX_GPIO_09 | GPIO_CFG_OUT_STD | GPIO_CFG_OUT_STR_HIGH | GPIO_CFG_OUT_LOW, // GPIO09, Yellow LED
-    GPIOCC32XX_GPIO_10 | GPIO_CFG_OUT_STD | GPIO_CFG_OUT_STR_HIGH | GPIO_CFG_OUT_LOW, // GPIO10: Blue LED
+// The range of pins available on this device.
+const uint_least8_t GPIO_pinLowerBound = 0;
+const uint_least8_t GPIO_pinUpperBound = 32;
+
+GPIO_PinConfig gpioPinConfigs[33] = {
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO0 (ANA)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO1 (UART0_TX)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO2 (UART0_RX)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO3 (UART1_TX)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO4 (UART1_RX)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO5
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO6
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO7
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO8
+    GPIO_CFG_OUTPUT_INTERNAL | GPIO_CFG_OUT_STR_HIGH | GPIO_CFG_OUT_LOW, // GPIO9 (GT_PWM05)
+    GPIO_CFG_OUTPUT_INTERNAL | GPIO_CFG_OUT_STR_HIGH | GPIO_CFG_OUT_LOW, // GPIO10 (GT_PWM06)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO11 (GT_PWM07)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO12
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO13
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO14 (I2C_SCL)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO15 (I2C_SDA)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO16
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO17
+    GPIOCC32XX_DO_NOT_CONFIG,                                            // GPIO18 (SPI_FLASH_CLK)
+    GPIOCC32XX_DO_NOT_CONFIG,                                            // GPIO19 (SPI_FLASH_DOUT)
+    GPIOCC32XX_DO_NOT_CONFIG,                                            // GPIO20 (SPI_FLASH_DIN)
+    GPIOCC32XX_DO_NOT_CONFIG,                                            // GPIO21 (SPI_FLASH_CS)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO22
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO23 (TDI)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO24 (TDO)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO25 (SOP2)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO26 (ANTSEL1)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO27 (ANTSEL2)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO28 (TCK)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO29 (TMS)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO30 (ANA)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO31 (DCDC_ANA2_SW_P)
+    GPIO_CFG_INPUT | GPIOCC32XX_DO_NOT_CONFIG,                           // GPIO32 (RTC_XTAL_N)
 };
 
-GPIO_CallbackFxn gpioCallbackFunctions[] = {};
+GPIO_CallbackFxn gpioCallbackFunctions[33];
 
-const GPIOCC32XX_Config GPIOCC32XX_config = {
-    .pinConfigs = (GPIO_PinConfig *)gpioPinConfigs,
+void* gpioUserArgs[33];
+
+const GPIO_Config GPIO_config = {
+    .configs = (GPIO_PinConfig *)gpioPinConfigs,
     .callbacks = (GPIO_CallbackFxn *)gpioCallbackFunctions,
-    .numberOfPinConfigs = sizeof(gpioPinConfigs) / sizeof(GPIO_PinConfig),
-    .numberOfCallbacks = 0,
+    .userArgs = gpioUserArgs,
     .intPriority = (~0)
 };
 
@@ -178,19 +214,19 @@ static PowerCC32XX_ParkInfo parkInfo[] = {
     {PowerCC32XX_PIN06, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO15 (I2C_SDA)
     {PowerCC32XX_PIN07, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO16
     {PowerCC32XX_PIN08, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO17
-    {PowerCC32XX_PIN13, PowerCC32XX_WEAK_PULL_DOWN_STD}, // FLASH_SPI_DIN
+    {PowerCC32XX_PIN13, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO20 (SPI_FLASH_DIN)
     {PowerCC32XX_PIN15, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO22
-    {PowerCC32XX_PIN16, PowerCC32XX_WEAK_PULL_DOWN_STD}, // TDI (JTAG)
-    {PowerCC32XX_PIN17, PowerCC32XX_WEAK_PULL_DOWN_STD}, // TDO (JTAG)
+    {PowerCC32XX_PIN16, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO23 (TDI)
+    {PowerCC32XX_PIN17, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO24 (TDO)
     {PowerCC32XX_PIN18, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO28
-    {PowerCC32XX_PIN19, PowerCC32XX_WEAK_PULL_DOWN_STD}, // TCK (JTAG)
-    {PowerCC32XX_PIN20, PowerCC32XX_WEAK_PULL_DOWN_STD}, // TMS (JTAG)
-    {PowerCC32XX_PIN21, PowerCC32XX_WEAK_PULL_DOWN_STD}, // SOP2
-    {PowerCC32XX_PIN29, PowerCC32XX_WEAK_PULL_DOWN_STD}, // ANTSEL1
-    {PowerCC32XX_PIN30, PowerCC32XX_WEAK_PULL_DOWN_STD}, // ANTSEL2
-    {PowerCC32XX_PIN45, PowerCC32XX_WEAK_PULL_DOWN_STD}, // DCDC_ANA2_SW_P
+    {PowerCC32XX_PIN19, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO28 (TCK)
+    {PowerCC32XX_PIN20, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO29 (TMS)
+    {PowerCC32XX_PIN21, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO25 (SOP2)
+    {PowerCC32XX_PIN29, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO26 (ANTSEL1)
+    {PowerCC32XX_PIN30, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO27 (ANTSEL2)
+    {PowerCC32XX_PIN45, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO31 (DCDC_ANA2_SW_P)
     {PowerCC32XX_PIN50, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO0
-    {PowerCC32XX_PIN52, PowerCC32XX_WEAK_PULL_DOWN_STD}, // RTC_XTAL_N
+    {PowerCC32XX_PIN52, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO32 (RTC_XTAL_N)
     {PowerCC32XX_PIN53, PowerCC32XX_WEAK_PULL_DOWN_STD}, // GPIO30
     {PowerCC32XX_PIN55, PowerCC32XX_WEAK_PULL_UP_STD  }, // GPIO1 (UART0_TX)
     {PowerCC32XX_PIN57, PowerCC32XX_WEAK_PULL_UP_STD  }, // GPIO2 (UART0_RX)
