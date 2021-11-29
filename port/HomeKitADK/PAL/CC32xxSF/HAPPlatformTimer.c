@@ -13,8 +13,6 @@
 #include "HAPPlatformTimer+Init.h"
 #include "HAPPlatformRunLoop+Init.h"
 
-#include <stdio.h>
-
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "Timer" };
 
 #define kTimerStorage_MaxTimers ((size_t) 32)
@@ -42,9 +40,10 @@ static void TimerCallback(TimerHandle_t handle)
 void HAPPlatformTimerCreate(void)
 {
     // Create software timer instances for later use.
-    for (size_t i = 0; i < kTimerStorage_MaxTimers; ++i) {
+    for (uint32_t i = 0; i < kTimerStorage_MaxTimers; ++i) {
         char timerName[4] =  { '\0' };
-        sprintf(timerName, "T%02u", i + 1); // T01, T02, ...
+        HAPError err = HAPStringWithFormat(timerName, sizeof timerName, "T%02lu", i + 1);
+        HAPAssert(!err);
         timerHandles[i] = xTimerCreateStatic(timerName,           // pcTimerName
                                              1,                   // xTimerPeriod
                                              pdFALSE,             // uxAutoReload
@@ -83,11 +82,10 @@ HAPError HAPPlatformTimerRegister(HAPPlatformTimerRef *id,
     // Store timer ID.
     *id = (HAPPlatformTimerRef)pvTimerGetTimerID(timerHandles[i]);
     
-    HAPLogDebug(&logObject,
-        "Added timer: %lu (deadline %8llu.%03llu).",
-        (unsigned long) *id,
-        (unsigned long long) (timers[i].deadline / HAPSecond),
-        (unsigned long long) (timers[i].deadline % HAPSecond));
+    HAPLogDebug(&logObject, "Added timer: %lu (deadline %8llu.%03llu).",
+                (unsigned long) *id,
+                (unsigned long long) (timers[i].deadline / HAPSecond),
+                (unsigned long long) (timers[i].deadline % HAPSecond));
 
     // Calculate the timer period.
     TickType_t period;
@@ -112,13 +110,13 @@ void HAPPlatformTimerDeregister(HAPPlatformTimerRef id)
 {
     HAPPrecondition((size_t)id < HAPArrayCount(timers));
 
-    HAPLogDebug(&logObject, "Removed timer: %lu", (unsigned long) id);
-
     size_t i = (size_t)id;
     HAPAssert(timers[i].callback);
     xTimerStop(timerHandles[i], 0);
     timers[i].callback = NULL;
     timers[i].deadline = 0;
+
+    HAPLogDebug(&logObject, "Removed timer: %lu", (unsigned long) id);
     return;
 }
 
