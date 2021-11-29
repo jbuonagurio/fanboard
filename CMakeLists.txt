@@ -370,7 +370,7 @@ add_library(homekitadk
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformRunLoop.c"
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformServiceDiscovery.c"
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformTCPStreamManager.c"
-    #"${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformTimer.c"
+    "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformTimer.c"
 )
 
 target_include_directories(homekitadk PUBLIC
@@ -420,10 +420,9 @@ add_executable(${PROJECT_NAME})
 target_sources(${PROJECT_NAME} PRIVATE
     "app/Board.c"
     "app/Event.c"
-    "app/CRC.c"
     "app/App.c"
     "app/DB.c"
-    "app/UARTTask.c"
+    "app/UART.c"
     "app/Utilities.c"
     "app/Main.c"
     "${STARTUP_FILE}"
