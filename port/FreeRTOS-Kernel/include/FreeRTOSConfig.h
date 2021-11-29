@@ -68,6 +68,9 @@ supported, or if both static and dynamic allocation are supported. */
 
 #define configTOTAL_HEAP_SIZE           ( ( size_t ) ( 0x8000 ) )
 
+/* Idle task stack size in words */
+#define configIDLE_TASK_STACK_DEPTH     (configMINIMAL_STACK_SIZE * 2)
+
 /* Default stack size for TI-POSIX threads (in words) */
 #define configPOSIX_STACK_SIZE          ( ( unsigned short ) 512 )
 
