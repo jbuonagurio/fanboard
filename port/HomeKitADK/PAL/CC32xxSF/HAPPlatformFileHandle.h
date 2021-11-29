@@ -51,10 +51,9 @@ HAP_STATIC_ASSERT(sizeof(HAPPlatformFileHandleEvent) == 1, HAPPlatformFileHandle
  * @param      context              The context parameter previously passed to the
  *                                  HAPPlatformFileHandleRegister function.
  */
-typedef void (*HAPPlatformFileHandleCallback)(
-        HAPPlatformFileHandleRef fileHandle,
-        HAPPlatformFileHandleEvent fileHandleEvents,
-        void* _Nullable context);
+typedef void (*HAPPlatformFileHandleCallback)(HAPPlatformFileHandleRef fileHandle,
+                                              HAPPlatformFileHandleEvent fileHandleEvents,
+                                              void* _Nullable context);
 
 /**
  * Registers a platform-specific file descriptor for which a callback shall be invoked when one or more events occur.
@@ -73,12 +72,11 @@ typedef void (*HAPPlatformFileHandleCallback)(
  * @return kHAPError_OutOfResources If no more resources for registrations can be allocated.
  */
 HAP_RESULT_USE_CHECK
-HAPError HAPPlatformFileHandleRegister(
-        HAPPlatformFileHandleRef* fileHandle,
-        int fileDescriptor,
-        HAPPlatformFileHandleEvent interests,
-        HAPPlatformFileHandleCallback callback,
-        void* _Nullable context);
+HAPError HAPPlatformFileHandleRegister(HAPPlatformFileHandleRef* fileHandle,
+                                       int fileDescriptor,
+                                       HAPPlatformFileHandleEvent interests,
+                                       HAPPlatformFileHandleCallback callback,
+                                       void* _Nullable context);
 
 /**
  * Updates a registration for a previously registered platform-specific file descriptor.
@@ -88,11 +86,10 @@ HAPError HAPPlatformFileHandleRegister(
  * @param      callback             Function to call when one or more events occur on the given file descriptor.
  * @param      context              Context that shall be passed to the callback.
  */
-void HAPPlatformFileHandleUpdateInterests(
-        HAPPlatformFileHandleRef fileHandle,
-        HAPPlatformFileHandleEvent interests,
-        HAPPlatformFileHandleCallback callback,
-        void* _Nullable context);
+void HAPPlatformFileHandleUpdateInterests(HAPPlatformFileHandleRef fileHandle,
+                                          HAPPlatformFileHandleEvent interests,
+                                          HAPPlatformFileHandleCallback callback,
+                                          void* _Nullable context);
 
 /**
  * Removes a registration for a previously registered platform-specific file descriptor.
