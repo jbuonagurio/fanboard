@@ -280,12 +280,11 @@ void HAPPlatformServiceDiscoveryEnumerateTXTRecords(
             break;
         }
 
-        callback(
-                context,
-                serviceDiscovery,
-                serviceDiscovery->txtRecords[i].key,
-                serviceDiscovery->txtRecords[i].value.bytes,
-                serviceDiscovery->txtRecords[i].value.numBytes,
-                &shouldContinue);
+        callback(context,
+                 serviceDiscovery,
+                 serviceDiscovery->txtRecords[i].key,
+                 serviceDiscovery->txtRecords[i].value.bytes,
+                 serviceDiscovery->txtRecords[i].value.numBytes,
+                 &shouldContinue);
     }
 }
