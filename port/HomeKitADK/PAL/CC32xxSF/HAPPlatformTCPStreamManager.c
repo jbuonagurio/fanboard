@@ -6,18 +6,15 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of HomeKit ADK project authors.
 
-#include <errno.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <signal.h>
-#include <sys/socket.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <FreeRTOS.h> // pvPortMalloc
 
-#include <ti/net/slnetif.h> // Replaces <net/if.h>
-#include <ti/net/slnetutils.h> // htons, ntohs
+#include <errno.h>
+
+#include <ti/net/bsd/errnoutil.h>
+#include <ti/net/slneterr.h> 
+#include <ti/net/slnetif.h>
+#include <ti/net/slnetsock.h>
+#include <ti/net/slnetutils.h>
 
 #include "HAPPlatform+Init.h"
 #include "HAPPlatformLog+Init.h"
@@ -30,7 +27,8 @@ static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, 
  *
  * @param      tcpStreamListener    TCP stream listener.
  */
-static void InitializeTCPStreamListener(HAPPlatformTCPStreamListener* tcpStreamListener) {
+static void InitializeTCPStreamListener(HAPPlatformTCPStreamListener* tcpStreamListener)
+{
     HAPPrecondition(tcpStreamListener);
 
     tcpStreamListener->tcpStreamManager = NULL;
@@ -47,7 +45,8 @@ static void InitializeTCPStreamListener(HAPPlatformTCPStreamListener* tcpStreamL
  *
  * @param      tcpStream            TCP stream.
  */
-static void InitializeTCPStream(HAPPlatformTCPStream* tcpStream) {
+static void InitializeTCPStream(HAPPlatformTCPStream* tcpStream)
+{
     HAPPrecondition(tcpStream);
 
     tcpStream->tcpStreamManager = NULL;
@@ -60,7 +59,8 @@ static void InitializeTCPStream(HAPPlatformTCPStream* tcpStream) {
 }
 
 HAP_RESULT_USE_CHECK
-HAPNetworkPort HAPPlatformTCPStreamManagerGetListenerPort(HAPPlatformTCPStreamManagerRef tcpStreamManager) {
+HAPNetworkPort HAPPlatformTCPStreamManagerGetListenerPort(HAPPlatformTCPStreamManagerRef tcpStreamManager) 
+{
     HAPPrecondition(tcpStreamManager);
     HAPPrecondition(tcpStreamManager->tcpStreams);
     HAPPrecondition(tcpStreamManager->tcpStreamListener.tcpStreamManager);
@@ -77,18 +77,16 @@ HAPNetworkPort HAPPlatformTCPStreamManagerGetListenerPort(HAPPlatformTCPStreamMa
  * @return kHAPError_Unknown        If the nonblocking flag could not be set.
  */
 HAP_RESULT_USE_CHECK
-static HAPError SetNonblocking(int sd) {
+static HAPError SetNonblocking(int sd)
+{
     int v = 1;
     HAPLogBufferDebug(&logObject, &v, sizeof v, "setsockopt(%d, SOL_SOCKET, SO_NONBLOCKING, <buffer>);", sd);
-    int e = setsockopt(sd, SOL_SOCKET, SO_NONBLOCKING, &v, sizeof v);
+    int e = SlNetSock_setOpt((int16_t)sd, SLNETSOCK_LVL_SOCKET, SLNETSOCK_OPSOCK_NON_BLOCKING, &v, sizeof v);
     if (e != 0) {
-        HAPPlatformLogPOSIXError(
-                kHAPLogType_Error,
-                "System call 'setsockopt' to set socket options to 'O_NONBLOCK' failed.",
-                errno,
-                __func__,
-                HAP_FILE,
-                __LINE__);
+        ErrnoUtil_set(e);
+        HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                 "System call 'setsockopt' to set socket options to 'O_NONBLOCK' failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
         return kHAPError_Unknown;
     }
     return kHAPError_None;
@@ -103,28 +101,24 @@ static HAPError SetNonblocking(int sd) {
  * @return kHAPError_Unknown        If an error occurred while disabling coalescing of small segments.
  */
 HAP_RESULT_USE_CHECK
-static HAPError SetNodelay(int sd) {
+static HAPError SetNodelay(int sd)
+{
     int v = 1;
     HAPLogBufferDebug(&logObject, &v, sizeof v, "setsockopt(%d, IPPROTO_TCP, TCP_NODELAY, <buffer>);", sd);
-    int e = setsockopt(sd, IPPROTO_TCP, TCP_NODELAY, &v, sizeof v);
+    int e = SlNetSock_setOpt((int16_t)sd, SLNETSOCK_PROTO_TCP, SLNETSOCK_TCP_NODELAY, &v, sizeof v);
     if (e != 0) {
-        int _errno = errno;
-        HAPAssert(e == -1);
-        HAPPlatformLogPOSIXError(
-                kHAPLogType_Error,
-                "System call 'setsockopt' to set socket options to 'TCP_NODELAY' failed.",
-                _errno,
-                __func__,
-                HAP_FILE,
-                __LINE__);
+        ErrnoUtil_set(e);
+        HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                 "System call 'setsockopt' to set socket options to 'TCP_NODELAY' failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
         return kHAPError_Unknown;
     }
     return kHAPError_None;
 }
 
-void HAPPlatformTCPStreamManagerCreate(
-        HAPPlatformTCPStreamManagerRef tcpStreamManager,
-        const HAPPlatformTCPStreamManagerOptions* options) {
+void HAPPlatformTCPStreamManagerCreate(HAPPlatformTCPStreamManagerRef tcpStreamManager,
+                                       const HAPPlatformTCPStreamManagerOptions* options) 
+{
     HAPPrecondition(tcpStreamManager);
     HAPPrecondition(options);
     HAPPrecondition(options->maxConcurrentTCPStreams);
@@ -157,7 +151,7 @@ void HAPPlatformTCPStreamManagerCreate(
 
     InitializeTCPStreamListener(&tcpStreamManager->tcpStreamListener);
 
-    tcpStreamManager->tcpStreams = malloc(tcpStreamManager->maxTCPStreams * sizeof(HAPPlatformTCPStream));
+    tcpStreamManager->tcpStreams = pvPortMalloc(tcpStreamManager->maxTCPStreams * sizeof(HAPPlatformTCPStream));
     if (!tcpStreamManager->tcpStreams) {
         HAPLogError(&logObject, "Allocating new TCP stream failed: out of memory.");
         HAPFatalError();
@@ -170,18 +164,15 @@ void HAPPlatformTCPStreamManagerCreate(
     void (*h)(int);
     h = signal(SIGPIPE, SIG_IGN);
     if (h == SIG_ERR) {
-        HAPPlatformLogPOSIXError(
-                kHAPLogType_Error,
-                "System call 'signal' to ignore signals of type 'SIGPIPE' failed.",
-                errno,
-                __func__,
-                HAP_FILE,
-                __LINE__);
+        HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                 "System call 'signal' to ignore signals of type 'SIGPIPE' failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
         HAPFatalError();
     }
 }
 
-void HAPPlatformTCPStreamManagerRelease(HAPPlatformTCPStreamManagerRef tcpStreamManager) {
+void HAPPlatformTCPStreamManagerRelease(HAPPlatformTCPStreamManagerRef tcpStreamManager)
+{
     HAPPrecondition(tcpStreamManager);
     HAPPrecondition(tcpStreamManager->tcpStreams);
 
@@ -190,22 +181,22 @@ void HAPPlatformTCPStreamManagerRelease(HAPPlatformTCPStreamManagerRef tcpStream
 }
 
 HAP_RESULT_USE_CHECK
-bool HAPPlatformTCPStreamManagerIsListenerOpen(HAPPlatformTCPStreamManagerRef tcpStreamManager) {
+bool HAPPlatformTCPStreamManagerIsListenerOpen(HAPPlatformTCPStreamManagerRef tcpStreamManager)
+{
     HAPPrecondition(tcpStreamManager);
     HAPPrecondition(tcpStreamManager->tcpStreams);
 
     return tcpStreamManager->tcpStreamListener.tcpStreamManager != NULL;
 }
 
-static void HandleTCPStreamListenerFileHandleCallback(
-        HAPPlatformFileHandleRef fileHandle,
-        HAPPlatformFileHandleEvent fileHandleEvents,
-        void* _Nullable context);
+static void HandleTCPStreamListenerFileHandleCallback(HAPPlatformFileHandleRef fileHandle,
+                                                      HAPPlatformFileHandleEvent fileHandleEvents,
+                                                      void* _Nullable context);
 
-void HAPPlatformTCPStreamManagerOpenListener(
-        HAPPlatformTCPStreamManagerRef tcpStreamManager,
-        HAPPlatformTCPStreamListenerCallback callback,
-        void* _Nullable context) {
+void HAPPlatformTCPStreamManagerOpenListener(HAPPlatformTCPStreamManagerRef tcpStreamManager,
+                                             HAPPlatformTCPStreamListenerCallback callback,
+                                             void* _Nullable context)
+{
     HAPPrecondition(tcpStreamManager);
     HAPPrecondition(tcpStreamManager->tcpStreams);
     HAPPrecondition(callback);
@@ -218,16 +209,13 @@ void HAPPlatformTCPStreamManagerOpenListener(
     HAPPrecondition(!tcpStreamManager->tcpStreamListener.callback);
     HAPPrecondition(!tcpStreamManager->tcpStreamListener.context);
 
-    HAPLogDebug(&logObject, "HAPPlatformTCPStreamManagerOpenListener");
-
     HAPError err;
-    int _errno;
     int e;
 
     uint32_t interfaceIndex;
     if (tcpStreamManager->tcpStreamListenerConfiguration.interfaceName[0]) {
         int32_t i = SlNetIf_getIDByName(tcpStreamManager->tcpStreamListenerConfiguration.interfaceName); // if_nametoindex
-        if ((i <= 0) || (i > INT32_MAX)) {
+        if (i == SLNETERR_RET_CODE_INVALID_INPUT) {
             HAPLogError(&logObject, "Mapping the local network interface name to its corresponding index failed.");
             HAPFatalError();
         }
@@ -237,98 +225,53 @@ void HAPPlatformTCPStreamManagerOpenListener(
     }
     HAPNetworkPort port = tcpStreamManager->tcpStreamListenerConfiguration.port;
 
-    int fileDescriptor = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP);
+    int fileDescriptor = (int)SlNetSock_create(SLNETSOCK_PF_INET6, SLNETSOCK_SOCK_STREAM, SLNETSOCK_PROTO_TCP, 0, 0);
     if (fileDescriptor == -1) {
         HAPLogError(&logObject, "Failed to open TCP stream listener socket.");
         HAPFatalError();
     }
 
-    // SO_BROADCAST, SO_REUSEADDR, SO_SNDBUF are not implemented in NWP.
-    //int v = 1;
-    //HAPLogBufferDebug(&logObject, &v, sizeof v, "setsockopt(%d, SOL_SOCKET, SO_REUSEADDR, <buffer>);", fileDescriptor);
-    //e = setsockopt(fileDescriptor, SOL_SOCKET, SO_REUSEADDR, &v, sizeof v);
-    //if (e != 0) {
-    //    _errno = errno;
-    //    HAPAssert(e == -1);
-    //    HAPPlatformLogPOSIXError(
-    //            kHAPLogType_Error,
-    //            "System call 'setsockopt' with option 'SO_REUSEADDR' on TCP stream listener socket failed.",
-    //            _errno,
-    //            __func__,
-    //            HAP_FILE,
-    //            __LINE__);
-    //    HAPFatalError();
-    //}
+    int v = 1;
+    HAPLogBufferDebug(&logObject, &v, sizeof v, "setsockopt(%d, SOL_SOCKET, SO_REUSEADDR, <buffer>);", fileDescriptor);
+    e = SlNetSock_setOpt((int16_t)fileDescriptor, SLNETSOCK_LVL_SOCKET, SLNETSOCK_OPSOCK_REUSEADDR, &v, sizeof v);
+    if (e != 0) {
+        ErrnoUtil_set(e);
+        HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                 "System call 'setsockopt' with option 'SO_REUSEADDR' on TCP stream listener socket failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
+    }
 
     if (interfaceIndex) {
-#if defined(SO_BINDTODEVICE)
-        HAPLogBufferDebug(
-                &logObject,
-                tcpStreamManager->tcpStreamListenerConfiguration.interfaceName,
-                sizeof tcpStreamManager->tcpStreamListenerConfiguration.interfaceName,
-                "setsockopt(%d, SOL_SOCKET, SO_BINDTODEVICE, <buffer>);",
-                fileDescriptor);
-        e = setsockopt(
-                fileDescriptor,
-                SOL_SOCKET,
-                SO_BINDTODEVICE,
-                tcpStreamManager->tcpStreamListenerConfiguration.interfaceName,
-                sizeof tcpStreamManager->tcpStreamListenerConfiguration.interfaceName);
-        if (e != 0) {
-            _errno = errno;
-            HAPAssert(e == -1);
-            HAPPlatformLogPOSIXError(
-                    kHAPLogType_Error,
-                    "System call 'setsockopt' with option 'SO_BINDTODEVICE' on TCP stream listener socket failed.",
-                    _errno,
-                    __func__,
-                    HAP_FILE,
-                    __LINE__);
-            HAPFatalError();
-        }
-#else
         HAPLog(&logObject, "Ignoring local network interface name on which to bind the TCP stream manager.");
         interfaceIndex = 0;
-#endif
     }
     HAPLogDebug(&logObject, "TCP stream listener interface index: %u", (unsigned int) interfaceIndex);
 
-    struct sockaddr_in6 sin6;
-
+    SlNetSock_AddrIn6_t sin6;
     HAPRawBufferZero(&sin6, sizeof sin6);
-    sin6.sin6_family = AF_INET6;
+    sin6.sin6_family = SLNETSOCK_AF_INET6;
     sin6.sin6_port = SlNetUtil_htons(port);
-    //sin6.sin6_addr = in6addr_any; // Not implemented in NWP.
+    HAPRawBufferZero(&(sin6.sin6_addr), sizeof(SlNetSock_In6Addr_t)); // in6addr_any NYI; IPv6 unspecified address is all zeroes
 
-    HAPLogBufferDebug(&logObject, (struct sockaddr*) &sin6, sizeof sin6, "bind(%d, <buffer>);", fileDescriptor);
-    e = bind(fileDescriptor, (struct sockaddr*) &sin6, sizeof sin6);
+    HAPLogBufferDebug(&logObject, (struct SlNetSock_Addr_t*) &sin6, sizeof sin6, "bind(%d, <buffer>);", fileDescriptor);
+    e = (int)SlNetSock_bind((int16_t)fileDescriptor, (const SlNetSock_Addr_t *)&sin6, sizeof sin6);
     if (e != 0) {
-        _errno = errno;
-        HAPAssert(e == -1);
-        HAPPlatformLogPOSIXError(
-                kHAPLogType_Error,
-                "System call 'bind' on TCP stream listener socket failed.",
-                _errno,
-                __func__,
-                HAP_FILE,
-                __LINE__);
+        ErrnoUtil_set(e);
+        HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                 "System call 'bind' on TCP stream listener socket failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
         HAPFatalError();
     }
 
     if (!port) {
-        socklen_t sin6_len = sizeof sin6;
+        SlNetSocklen_t sin6_len = sizeof sin6;
         HAPRawBufferZero(&sin6, sizeof sin6);
-        e = getsockname(fileDescriptor, (struct sockaddr*) &sin6, &sin6_len);
+        e = (int)SlNetSock_getSockName((int16_t)fileDescriptor, (SlNetSock_Addr_t *)&sin6, &sin6_len);
         if (e != 0) {
-            _errno = errno;
-            HAPAssert(e == -1);
-            HAPPlatformLogPOSIXError(
-                    kHAPLogType_Error,
-                    "System call 'getsockname' on TCP stream listener socket failed.",
-                    _errno,
-                    __func__,
-                    HAP_FILE,
-                    __LINE__);
+            ErrnoUtil_set(e);
+            HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                     "System call 'getsockname' on TCP stream listener socket failed.",
+                                     errno, __func__, HAP_FILE, __LINE__);
             HAPFatalError();
         }
         HAPAssert(sin6.sin6_port);
@@ -337,29 +280,25 @@ void HAPPlatformTCPStreamManagerOpenListener(
     HAPLogDebug(&logObject, "TCP stream listener port: %u.", port);
 
     HAPLogDebug(&logObject, "listen(%d, 64);", fileDescriptor);
-    e = listen(fileDescriptor, 64);
+    e = (int)SlNetSock_listen((int16_t)fileDescriptor, 64);
     if (e != 0) {
-        _errno = errno;
-        HAPAssert(e == -1);
-        HAPPlatformLogPOSIXError(
-                kHAPLogType_Error,
-                "System call 'listen' on TCP stream listener socket failed.",
-                _errno,
-                __func__,
-                HAP_FILE,
-                __LINE__);
+        ErrnoUtil_set(e);
+        HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                 "System call 'listen' on TCP stream listener socket failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
         HAPFatalError();
     }
 
     HAPPlatformFileHandleRef fileHandle;
+    
     // HAPPlatformRunLoop.c
-    err = HAPPlatformFileHandleRegister(
-            &fileHandle,
-            fileDescriptor,
-            (HAPPlatformFileHandleEvent) {
-                    .isReadyForReading = true, .isReadyForWriting = false, .hasErrorConditionPending = false },
-            HandleTCPStreamListenerFileHandleCallback,
-            &tcpStreamManager->tcpStreamListener);
+    err = HAPPlatformFileHandleRegister(&fileHandle,
+                                        fileDescriptor,
+                                        (HAPPlatformFileHandleEvent) { .isReadyForReading = true,
+                                                                       .isReadyForWriting = false,
+                                                                       .hasErrorConditionPending = false },
+                                        HandleTCPStreamListenerFileHandleCallback,
+                                        &tcpStreamManager->tcpStreamListener);
     if (err) {
         HAPLogError(&logObject, "Failed to register TCP stream listener file handle.");
         HAPFatalError();
@@ -375,59 +314,49 @@ void HAPPlatformTCPStreamManagerOpenListener(
     tcpStreamManager->tcpStreamListener.context = context;
 }
 
-void HAPPlatformTCPStreamManagerCloseListener(HAPPlatformTCPStreamManagerRef tcpStreamManager) {
+void HAPPlatformTCPStreamManagerCloseListener(HAPPlatformTCPStreamManagerRef tcpStreamManager)
+{
     HAPPrecondition(tcpStreamManager);
     HAPPrecondition(tcpStreamManager->tcpStreams);
     HAPPrecondition(tcpStreamManager->tcpStreamListener.tcpStreamManager == tcpStreamManager);
     HAPPrecondition(tcpStreamManager->tcpStreamListener.fileDescriptor != -1);
     HAPPrecondition(tcpStreamManager->tcpStreamListener.fileHandle);
     HAPPrecondition(tcpStreamManager->tcpStreamListener.callback);
-    HAPLogDebug(&logObject, "HAPPlatformTCPStreamManagerCloseListener");
 
     int e;
+
     // HAPPlatformRunLoop.c
     HAPPlatformFileHandleDeregister(tcpStreamManager->tcpStreamListener.fileHandle);
 
     HAPLogDebug(&logObject, "shutdown(%d, SHUT_RDWR);", tcpStreamManager->tcpStreamListener.fileDescriptor);
-    e = shutdown(tcpStreamManager->tcpStreamListener.fileDescriptor, SHUT_RDWR);
+    e = (int)SlNetSock_shutdown((uint16_t)tcpStreamManager->tcpStreamListener.fileDescriptor, (uint16_t)SLNETSOCK_SHUT_RDWR);
     if (e != 0) {
-        int _errno = errno;
-        HAPAssert(e == -1);
-        HAPPlatformLogPOSIXError(
-                kHAPLogType_Debug,
-                "System call 'shutdown' on TCP stream listener socket failed.",
-                _errno,
-                __func__,
-                HAP_FILE,
-                __LINE__);
+        ErrnoUtil_set(e);
+        HAPPlatformLogPOSIXError(kHAPLogType_Debug,
+                                 "System call 'shutdown' on TCP stream listener socket failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
     }
 
     HAPLogDebug(&logObject, "close(%d);", tcpStreamManager->tcpStreamListener.fileDescriptor);
-    e = close(tcpStreamManager->tcpStreamListener.fileDescriptor);
+    e = (int)SlNetSock_close((int16_t)tcpStreamManager->tcpStreamListener.fileDescriptor);
     if (e != 0) {
-        int _errno = errno;
-        HAPAssert(e == -1);
-        HAPPlatformLogPOSIXError(
-                kHAPLogType_Debug,
-                "System call 'close' on TCP stream listener socket failed.",
-                _errno,
-                __func__,
-                HAP_FILE,
-                __LINE__);
+        ErrnoUtil_set(e);
+        HAPPlatformLogPOSIXError(kHAPLogType_Debug,
+                                 "System call 'close' on TCP stream listener socket failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
     }
 
     InitializeTCPStreamListener(&tcpStreamManager->tcpStreamListener);
 }
 
-static void HandleTCPStreamFileHandleCallback(
-        HAPPlatformFileHandleRef fileHandle,
-        HAPPlatformFileHandleEvent fileHandleEvents,
-        void* _Nullable context);
+static void HandleTCPStreamFileHandleCallback(HAPPlatformFileHandleRef fileHandle,
+                                              HAPPlatformFileHandleEvent fileHandleEvents,
+                                              void* _Nullable context);
 
 HAP_RESULT_USE_CHECK
-HAPError HAPPlatformTCPStreamManagerAcceptTCPStream(
-        HAPPlatformTCPStreamManagerRef tcpStreamManager,
-        HAPPlatformTCPStreamRef* tcpStream_) {
+HAPError HAPPlatformTCPStreamManagerAcceptTCPStream(HAPPlatformTCPStreamManagerRef tcpStreamManager,
+                                                    HAPPlatformTCPStreamRef* tcpStream_)
+{
     HAPPrecondition(tcpStreamManager);
     HAPPrecondition(tcpStreamManager->tcpStreams);
     HAPPrecondition(tcpStreamManager->tcpStreamListener.tcpStreamManager == tcpStreamManager);
@@ -435,7 +364,6 @@ HAPError HAPPlatformTCPStreamManagerAcceptTCPStream(
     HAPPrecondition(tcpStreamManager->tcpStreamListener.fileHandle);
     HAPPrecondition(tcpStream_);
 
-    HAPLogDebug(&logObject, "HAPPlatformTCPStreamManagerAcceptTCPStream");
     HAPError err;
 
     if (tcpStreamManager->numTCPStreams == tcpStreamManager->maxTCPStreams) {
@@ -460,16 +388,13 @@ HAPError HAPPlatformTCPStreamManagerAcceptTCPStream(
     HAPAssert(!tcpStream->fileHandle);
 
     HAPLogDebug(&logObject, "accept(%d, NULL, NULL);", tcpStreamManager->tcpStreamListener.fileDescriptor);
-    int fileDescriptor = accept(tcpStreamManager->tcpStreamListener.fileDescriptor, NULL, NULL);
+    int fileDescriptor = (int)SlNetSock_accept((int16_t)tcpStreamManager->tcpStreamListener.fileDescriptor, NULL, NULL);
     if (fileDescriptor == -1) {
+        ErrnoUtil_set(fileDescriptor);
         if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR && errno != ECONNABORTED && errno != EPROTO) {
-            HAPPlatformLogPOSIXError(
-                    kHAPLogType_Error,
-                    "System call 'accept' on TCP stream listener socket failed.",
-                    errno,
-                    __func__,
-                    HAP_FILE,
-                    __LINE__);
+            HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                     "System call 'accept' on TCP stream listener socket failed.",
+                                     errno, __func__, HAP_FILE, __LINE__);
             *tcpStream_ = (HAPPlatformTCPStreamRef) NULL;
             return kHAPError_Unknown;
         }
@@ -492,14 +417,15 @@ HAPError HAPPlatformTCPStreamManagerAcceptTCPStream(
     }
 
     HAPPlatformFileHandleRef fileHandle;
+
     // HAPPlatformRunLoop.c
-    err = HAPPlatformFileHandleRegister(
-            &fileHandle,
-            fileDescriptor,
-            (HAPPlatformFileHandleEvent) {
-                    .isReadyForReading = false, .isReadyForWriting = false, .hasErrorConditionPending = false },
-            HandleTCPStreamFileHandleCallback,
-            tcpStream);
+    err = HAPPlatformFileHandleRegister(&fileHandle,
+                                        fileDescriptor,
+                                        (HAPPlatformFileHandleEvent) { .isReadyForReading = false,
+                                                                       .isReadyForWriting = false,
+                                                                       .hasErrorConditionPending = false },
+                                        HandleTCPStreamFileHandleCallback,
+                                        tcpStream);
     if (err) {
         HAPLogError(&logObject, "Failed to register TCP stream file handle.");
         HAPFatalError();
@@ -520,25 +446,25 @@ HAPError HAPPlatformTCPStreamManagerAcceptTCPStream(
 
     if (tcpStreamManager->maxTCPStreams - tcpStreamManager->numTCPStreams == 0) {
         HAPLogInfo(&logObject, "Suspending accepting new TCP streams on TCP stream listener socket.");
+        
         // HAPPlatformRunLoop.c
-        HAPPlatformFileHandleUpdateInterests(
-                tcpStreamManager->tcpStreamListener.fileHandle,
-                (HAPPlatformFileHandleEvent) {
-                        .isReadyForReading = false, .isReadyForWriting = false, .hasErrorConditionPending = false },
-                HandleTCPStreamListenerFileHandleCallback,
-                &tcpStreamManager->tcpStreamListener);
+        HAPPlatformFileHandleUpdateInterests(tcpStreamManager->tcpStreamListener.fileHandle,
+                                             (HAPPlatformFileHandleEvent) { .isReadyForReading = false,
+                                                                            .isReadyForWriting = false,
+                                                                            .hasErrorConditionPending = false },
+                                             HandleTCPStreamListenerFileHandleCallback,
+                                             &tcpStreamManager->tcpStreamListener);
     }
 
     return kHAPError_None;
 }
 
-void HAPPlatformTCPStreamCloseOutput(
-        HAPPlatformTCPStreamManagerRef tcpStreamManager,
-        HAPPlatformTCPStreamRef tcpStream_) {
+void HAPPlatformTCPStreamCloseOutput(HAPPlatformTCPStreamManagerRef tcpStreamManager,
+                                     HAPPlatformTCPStreamRef tcpStream_)
+{
     HAPPrecondition(tcpStreamManager);
     HAPPrecondition(tcpStreamManager->tcpStreams);
     HAPPrecondition(tcpStream_);
-    HAPLogDebug(&logObject, "HAPPlatformTCPStreamCloseOutput");
 
     HAPPlatformTCPStream* tcpStream = (HAPPlatformTCPStream*) tcpStream_;
 
@@ -547,25 +473,20 @@ void HAPPlatformTCPStreamCloseOutput(
     HAPPrecondition(tcpStream->fileHandle);
 
     HAPLogDebug(&logObject, "shutdown(%d, SHUT_WR);", tcpStream->fileDescriptor);
-    int e = shutdown(tcpStream->fileDescriptor, SHUT_WR);
+    int e = (int)SlNetSock_shutdown((uint16_t)tcpStream->fileDescriptor, (uint16_t)SLNETSOCK_SHUT_WR);
     if (e != 0) {
-        int _errno = errno;
-        HAPAssert(e == -1);
-        HAPPlatformLogPOSIXError(
-                kHAPLogType_Error,
-                "System call 'shutdown' on TCP stream listener socket failed.",
-                _errno,
-                __func__,
-                HAP_FILE,
-                __LINE__);
+        ErrnoUtil_set(e);
+        HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                 "System call 'shutdown' on TCP stream listener socket failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
     }
 }
 
-void HAPPlatformTCPStreamClose(HAPPlatformTCPStreamManagerRef tcpStreamManager, HAPPlatformTCPStreamRef tcpStream_) {
+void HAPPlatformTCPStreamClose(HAPPlatformTCPStreamManagerRef tcpStreamManager, HAPPlatformTCPStreamRef tcpStream_)
+{
     HAPPrecondition(tcpStreamManager);
     HAPPrecondition(tcpStreamManager->tcpStreams);
     HAPPrecondition(tcpStream_);
-    HAPLogDebug(&logObject, "HAPPlatformTCPStreamClose");
 
     HAPPlatformTCPStream* tcpStream = (HAPPlatformTCPStream*) tcpStream_;
 
@@ -579,31 +500,21 @@ void HAPPlatformTCPStreamClose(HAPPlatformTCPStreamManagerRef tcpStreamManager, 
     HAPPlatformFileHandleDeregister(tcpStream->fileHandle);
 
     HAPLogDebug(&logObject, "shutdown(%d, SHUT_RDWR);", tcpStream->fileDescriptor);
-    e = shutdown(tcpStream->fileDescriptor, SHUT_RDWR);
+    e = (int)SlNetSock_shutdown((uint16_t)tcpStream->fileDescriptor, (uint16_t)SLNETSOCK_SHUT_RDWR);
     if (e != 0) {
-        int _errno = errno;
-        HAPAssert(e == -1);
-        HAPPlatformLogPOSIXError(
-                kHAPLogType_Error,
-                "System call 'shutdown' on TCP stream socket failed.",
-                _errno,
-                __func__,
-                HAP_FILE,
-                __LINE__);
+        ErrnoUtil_set(e);
+        HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                 "System call 'shutdown' on TCP stream socket failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
     }
 
     HAPLogDebug(&logObject, "close(%d);", tcpStream->fileDescriptor);
-    e = close(tcpStream->fileDescriptor);
+    e = (int)SlNetSock_close(tcpStream->fileDescriptor);
     if (e != 0) {
-        int _errno = errno;
-        HAPAssert(e == -1);
-        HAPPlatformLogPOSIXError(
-                kHAPLogType_Error,
-                "System call 'close' on TCP stream socket failed.",
-                _errno,
-                __func__,
-                HAP_FILE,
-                __LINE__);
+        ErrnoUtil_set(e);
+        HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                 "System call 'close' on TCP stream socket failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
     }
 
     InitializeTCPStream(tcpStream);
@@ -619,13 +530,14 @@ void HAPPlatformTCPStreamClose(HAPPlatformTCPStreamManagerRef tcpStreamManager, 
         HAPAssert(tcpStreamManager->tcpStreamListener.fileHandle);
         if (tcpStreamManager->maxTCPStreams - tcpStreamManager->numTCPStreams == 1) {
             HAPLogInfo(&logObject, "Resuming accepting new TCP streams on TCP stream listener socket.");
+
             // HAPPlatformRunLoop.c
-            HAPPlatformFileHandleUpdateInterests(
-                    tcpStreamManager->tcpStreamListener.fileHandle,
-                    (HAPPlatformFileHandleEvent) {
-                            .isReadyForReading = true, .isReadyForWriting = false, .hasErrorConditionPending = false },
-                    HandleTCPStreamListenerFileHandleCallback,
-                    &tcpStreamManager->tcpStreamListener);
+            HAPPlatformFileHandleUpdateInterests(tcpStreamManager->tcpStreamListener.fileHandle,
+                                                 (HAPPlatformFileHandleEvent) { .isReadyForReading = true,
+                                                                                .isReadyForWriting = false,
+                                                                                .hasErrorConditionPending = false },
+                                                 HandleTCPStreamListenerFileHandleCallback,
+                                                 &tcpStreamManager->tcpStreamListener);
         }
     } else {
         HAPAssert(!tcpStreamManager->tcpStreamListener.tcpStreamManager);
@@ -633,18 +545,17 @@ void HAPPlatformTCPStreamClose(HAPPlatformTCPStreamManagerRef tcpStreamManager, 
     }
 }
 
-void HAPPlatformTCPStreamUpdateInterests(
-        HAPPlatformTCPStreamManagerRef tcpStreamManager,
-        HAPPlatformTCPStreamRef tcpStream_,
-        HAPPlatformTCPStreamEvent interests,
-        HAPPlatformTCPStreamEventCallback _Nullable callback,
-        void* _Nullable context) {
+void HAPPlatformTCPStreamUpdateInterests(HAPPlatformTCPStreamManagerRef tcpStreamManager,
+                                         HAPPlatformTCPStreamRef tcpStream_,
+                                         HAPPlatformTCPStreamEvent interests,
+                                         HAPPlatformTCPStreamEventCallback _Nullable callback,
+                                         void* _Nullable context)
+{
     HAPPrecondition(tcpStreamManager);
     HAPPrecondition(tcpStreamManager->tcpStreams);
     HAPPrecondition(tcpStream_);
     HAPPrecondition(!(interests.hasBytesAvailable || interests.hasSpaceAvailable) || callback != NULL);
 
-    HAPLogDebug(&logObject, "HAPPlatformTCPStreamUpdateInterests");
     HAPPlatformTCPStream* tcpStream = (HAPPlatformTCPStream*) tcpStream_;
 
     HAPPrecondition(tcpStream->tcpStreamManager == tcpStreamManager);
@@ -658,46 +569,43 @@ void HAPPlatformTCPStreamUpdateInterests(
 
     // HAPPlatformRunLoop.c
     HAPPlatformFileHandleUpdateInterests(
-            tcpStream->fileHandle,
-            (HAPPlatformFileHandleEvent) { .isReadyForReading = tcpStream->interests.hasBytesAvailable,
-                                           .isReadyForWriting = tcpStream->interests.hasSpaceAvailable,
-                                           .hasErrorConditionPending = false },
-            HandleTCPStreamFileHandleCallback,
-            tcpStream);
+        tcpStream->fileHandle,
+        (HAPPlatformFileHandleEvent) { .isReadyForReading = tcpStream->interests.hasBytesAvailable,
+                                       .isReadyForWriting = tcpStream->interests.hasSpaceAvailable,
+                                       .hasErrorConditionPending = false },
+        HandleTCPStreamFileHandleCallback,
+        tcpStream);
 }
 
 HAP_RESULT_USE_CHECK
-HAPError HAPPlatformTCPStreamRead(
-        HAPPlatformTCPStreamManagerRef tcpStreamManager,
-        HAPPlatformTCPStreamRef tcpStream_,
-        void* bytes,
-        size_t maxBytes,
-        size_t* numBytes) {
+HAPError HAPPlatformTCPStreamRead(HAPPlatformTCPStreamManagerRef tcpStreamManager,
+                                  HAPPlatformTCPStreamRef tcpStream_,
+                                  void* bytes,
+                                  size_t maxBytes,
+                                  size_t* numBytes)
+{
     HAPPrecondition(tcpStreamManager);
     HAPPrecondition(tcpStreamManager->tcpStreams);
     HAPPrecondition(tcpStream_);
     HAPPrecondition(bytes);
     HAPPrecondition(numBytes);
-    HAPLogDebug(&logObject, "HAPPlatformTCPStreamRead");
+    
     HAPPlatformTCPStream* tcpStream = (HAPPlatformTCPStream*) tcpStream_;
 
     HAPPrecondition(tcpStream->tcpStreamManager == tcpStreamManager);
     HAPPrecondition(tcpStream->fileDescriptor != -1);
     HAPPrecondition(tcpStream->fileHandle);
 
-    ssize_t n;
+    int32_t n;
     do {
-        n = recv(tcpStream->fileDescriptor, bytes, maxBytes, 0);
+        n = SlNetSock_recv((int16_t)tcpStream->fileDescriptor, bytes, (uint32_t)maxBytes, 0);
+        ErrnoUtil_set(n);
     } while ((n == -1) && (errno == EINTR));
     if (n == -1) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            HAPPlatformLogPOSIXError(
-                    kHAPLogType_Default,
-                    "System call 'recv' on TCP stream socket failed.",
-                    errno,
-                    __func__,
-                    HAP_FILE,
-                    __LINE__);
+            HAPPlatformLogPOSIXError(kHAPLogType_Default,
+                                     "System call 'recv' on TCP stream socket failed.",
+                                     errno, __func__, HAP_FILE, __LINE__);
             *numBytes = 0;
             return kHAPError_Unknown;
         }
@@ -714,37 +622,34 @@ HAPError HAPPlatformTCPStreamRead(
 }
 
 HAP_RESULT_USE_CHECK
-HAPError HAPPlatformTCPStreamWrite(
-        HAPPlatformTCPStreamManagerRef tcpStreamManager,
-        HAPPlatformTCPStreamRef tcpStream_,
-        const void* bytes,
-        size_t maxBytes,
-        size_t* numBytes) {
+HAPError HAPPlatformTCPStreamWrite(HAPPlatformTCPStreamManagerRef tcpStreamManager,
+                                   HAPPlatformTCPStreamRef tcpStream_,
+                                   const void* bytes,
+                                   size_t maxBytes,
+                                   size_t* numBytes)
+{
     HAPPrecondition(tcpStreamManager);
     HAPPrecondition(tcpStreamManager->tcpStreams);
     HAPPrecondition(tcpStream_);
     HAPPrecondition(bytes);
     HAPPrecondition(numBytes);
-    HAPLogDebug(&logObject, "HAPPlatformTCPStreamWrite");
+    
     HAPPlatformTCPStream* tcpStream = (HAPPlatformTCPStream*) tcpStream_;
 
     HAPPrecondition(tcpStream->tcpStreamManager == tcpStreamManager);
     HAPPrecondition(tcpStream->fileDescriptor != -1);
     HAPPrecondition(tcpStream->fileHandle);
 
-    ssize_t n;
+    int32_t n;
     do {
-        n = send(tcpStream->fileDescriptor, bytes, maxBytes, 0);
+        n = SlNetSock_send((int16_t)tcpStream->fileDescriptor, bytes, (uint32_t)maxBytes, 0);
+        ErrnoUtil_set(n);
     } while ((n == -1) && (errno == EINTR));
     if (n == -1) {
         if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
-            HAPPlatformLogPOSIXError(
-                    kHAPLogType_Default,
-                    "System call 'send' on TCP stream socket failed.",
-                    errno,
-                    __func__,
-                    HAP_FILE,
-                    __LINE__);
+            HAPPlatformLogPOSIXError(kHAPLogType_Default,
+                                     "System call 'send' on TCP stream socket failed.",
+                                     errno, __func__, HAP_FILE, __LINE__);
             *numBytes = 0;
             return kHAPError_Unknown;
         }
@@ -760,13 +665,13 @@ HAPError HAPPlatformTCPStreamWrite(
     return kHAPError_None;
 }
 
-static void HandleTCPStreamListenerFileHandleCallback(
-        HAPPlatformFileHandleRef fileHandle,
-        HAPPlatformFileHandleEvent fileHandleEvents,
-        void* _Nullable context) {
+static void HandleTCPStreamListenerFileHandleCallback(HAPPlatformFileHandleRef fileHandle,
+                                                      HAPPlatformFileHandleEvent fileHandleEvents,
+                                                      void* _Nullable context)
+{
     HAPAssert(fileHandle);
     HAPAssert(context);
-    HAPLogDebug(&logObject, "HandleTCPStreamListenerFileHandleCallback");
+    
     HAPPlatformTCPStreamListener* listener = (HAPPlatformTCPStreamListener*) context;
 
     HAPAssert(listener->tcpStreamManager);
@@ -779,13 +684,13 @@ static void HandleTCPStreamListenerFileHandleCallback(
     listener->callback(listener->tcpStreamManager, listener->context);
 }
 
-static void HandleTCPStreamFileHandleCallback(
-        HAPPlatformFileHandleRef fileHandle,
-        HAPPlatformFileHandleEvent fileHandleEvents,
-        void* _Nullable context) {
+static void HandleTCPStreamFileHandleCallback(HAPPlatformFileHandleRef fileHandle,
+                                              HAPPlatformFileHandleEvent fileHandleEvents,
+                                              void* _Nullable context)
+{
     HAPAssert(fileHandle);
     HAPAssert(context);
-    HAPLogDebug(&logObject, "HandleTCPStreamFileHandleCallback");
+    
     HAPPlatformTCPStream* tcpStream = (HAPPlatformTCPStream*) context;
 
     HAPAssert(tcpStream->tcpStreamManager);

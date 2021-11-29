@@ -26,15 +26,12 @@
 #include "HAPPlatform.h"
 
 #include <errno.h>
-#include <fcntl.h>
-#include <string.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <sys/syslimits.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <syslimits.h>
+
+#include <ti/net/bsd/errnoutil.h>
+#include <ti/net/slneterr.h> 
+#include <ti/net/slnetsock.h>
+#include <ti/net/slnetutils.h>
 
 #include "HAPPlatform+Init.h"
 #include "HAPPlatformFileHandle.h"
@@ -43,7 +40,7 @@
 
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "RunLoop" };
 
-#define LOOPBACK_PORT 9090
+#define kHAPPlatformRunLoop_LoopbackPort 9090
 
 /**
  * Internal file handle type, representing the registration of a platform-specific file descriptor.
@@ -201,18 +198,16 @@ static struct {
                                       .isAwaitingEvents = false },
               .fileHandles = &runLoop.fileHandleSentinel,
               .fileHandleCursor = &runLoop.fileHandleSentinel,
-
               .timers = NULL,
-
               .loopbackFileDescriptor = -1 };
 
 HAP_RESULT_USE_CHECK
-HAPError HAPPlatformFileHandleRegister(
-        HAPPlatformFileHandleRef* fileHandle_,
-        int fileDescriptor,
-        HAPPlatformFileHandleEvent interests,
-        HAPPlatformFileHandleCallback callback,
-        void* _Nullable context) {
+HAPError HAPPlatformFileHandleRegister(HAPPlatformFileHandleRef* fileHandle_,
+                                       int fileDescriptor,
+                                       HAPPlatformFileHandleEvent interests,
+                                       HAPPlatformFileHandleCallback callback,
+                                       void* _Nullable context)
+{
     HAPPrecondition(fileHandle_);
 
     // Prepare fileHandle.
@@ -236,11 +231,11 @@ HAPError HAPPlatformFileHandleRegister(
     return kHAPError_None;
 }
 
-void HAPPlatformFileHandleUpdateInterests(
-        HAPPlatformFileHandleRef fileHandle_,
-        HAPPlatformFileHandleEvent interests,
-        HAPPlatformFileHandleCallback callback,
-        void* _Nullable context) {
+void HAPPlatformFileHandleUpdateInterests(HAPPlatformFileHandleRef fileHandle_,
+                                          HAPPlatformFileHandleEvent interests,
+                                          HAPPlatformFileHandleCallback callback,
+                                          void* _Nullable context)
+{
     HAPPrecondition(fileHandle_);
     HAPPlatformFileHandle* fileHandle = (HAPPlatformFileHandle * _Nonnull) fileHandle_;
 
@@ -249,7 +244,8 @@ void HAPPlatformFileHandleUpdateInterests(
     fileHandle->context = context;
 }
 
-void HAPPlatformFileHandleDeregister(HAPPlatformFileHandleRef fileHandle_) {
+void HAPPlatformFileHandleDeregister(HAPPlatformFileHandleRef fileHandle_)
+{
     HAPPrecondition(fileHandle_);
     HAPPlatformFileHandle* fileHandle = (HAPPlatformFileHandle * _Nonnull) fileHandle_;
 
@@ -275,10 +271,10 @@ void HAPPlatformFileHandleDeregister(HAPPlatformFileHandleRef fileHandle_) {
     HAPPlatformFreeSafe(fileHandle);
 }
 
-static void ProcessSelectedFileHandles(
-        fd_set* readFileDescriptors,
-        fd_set* writeFileDescriptors,
-        fd_set* errorFileDescriptors) {
+static void ProcessSelectedFileHandles(SlNetSock_SdSet_t* readFileDescriptors,
+                                       SlNetSock_SdSet_t* writeFileDescriptors,
+                                       SlNetSock_SdSet_t* errorFileDescriptors)
+{
     HAPPrecondition(readFileDescriptors);
     HAPPrecondition(writeFileDescriptors);
     HAPPrecondition(errorFileDescriptors);
@@ -294,11 +290,11 @@ static void ProcessSelectedFileHandles(
             if (fileHandle->callback) {
                 HAPPlatformFileHandleEvent fileHandleEvents;
                 fileHandleEvents.isReadyForReading = fileHandle->interests.isReadyForReading &&
-                                                     FD_ISSET(fileHandle->fileDescriptor, readFileDescriptors);
+                                                     SlNetSock_sdsIsSet(fileHandle->fileDescriptor, readFileDescriptors);
                 fileHandleEvents.isReadyForWriting = fileHandle->interests.isReadyForWriting &&
-                                                     FD_ISSET(fileHandle->fileDescriptor, writeFileDescriptors);
+                                                     SlNetSock_sdsIsSet(fileHandle->fileDescriptor, writeFileDescriptors);
                 fileHandleEvents.hasErrorConditionPending = fileHandle->interests.hasErrorConditionPending &&
-                                                            FD_ISSET(fileHandle->fileDescriptor, errorFileDescriptors);
+                                                            SlNetSock_sdsIsSet(fileHandle->fileDescriptor, errorFileDescriptors);
 
                 if (fileHandleEvents.isReadyForReading || fileHandleEvents.isReadyForWriting ||
                     fileHandleEvents.hasErrorConditionPending) {
@@ -391,20 +387,19 @@ void CloseLoopback(int fileDescriptor)
 {
     if (fileDescriptor != -1) {
         HAPLogDebug(&logObject, "close(%d);", fileDescriptor);
-        int e = close(fileDescriptor);
+        int e = SlNetSock_close((int16_t)fileDescriptor);
         if (e != 0) {
-            int _errno = errno;
-            HAPAssert(e == -1);
-            HAPPlatformLogPOSIXError(kHAPLogType_Error, "Closing loopback failed (log, fileDescriptor0).",
-                _errno, __func__, HAP_FILE, __LINE__);
+            ErrnoUtil_set(e);
+            HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                     "Closing loopback failed (log, fileDescriptor0).",
+                                     errno, __func__, HAP_FILE, __LINE__);
         }
     }
 }
 
-static void HandleLoopbackFileHandleCallback(
-    HAPPlatformFileHandleRef fileHandle,
-    HAPPlatformFileHandleEvent fileHandleEvents,
-    void *_Nullable context HAP_UNUSED)
+static void HandleLoopbackFileHandleCallback(HAPPlatformFileHandleRef fileHandle,
+                                             HAPPlatformFileHandleEvent fileHandleEvents,
+                                             void *_Nullable context HAP_UNUSED)
 {
     HAPAssert(fileHandle);
     HAPAssert(fileHandle == runLoop.loopbackFileHandle);
@@ -412,21 +407,22 @@ static void HandleLoopbackFileHandleCallback(
 
     HAPAssert(runLoop.numLoopbackBytes < sizeof runLoop.loopbackBytes);
     
-    ssize_t n;
+    int32_t n;
     do {
-        n = recv(runLoop.loopbackFileDescriptor,
-                &runLoop.loopbackBytes[runLoop.numLoopbackBytes],
-                sizeof runLoop.loopbackBytes - runLoop.numLoopbackBytes, 0);
+        n = SlNetSock_recv((int16_t)runLoop.loopbackFileDescriptor,
+                           &runLoop.loopbackBytes[runLoop.numLoopbackBytes],
+                           (int32_t)(sizeof runLoop.loopbackBytes - runLoop.numLoopbackBytes), 0);
+        ErrnoUtil_set(n);
     } while (n == -1 && errno == EINTR);
     if (n == -1 && errno == EAGAIN) {
         return;
     }
 
     if (n < 0) {
-        int _errno = errno;
         HAPAssert(n == -1);
         HAPPlatformLogPOSIXError(kHAPLogType_Error,
-            "Loopback read failed.", _errno, __func__, HAP_FILE, __LINE__);
+                                 "Loopback read failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
         HAPFatalError();
     }
     if (n == 0) {
@@ -471,50 +467,54 @@ static void HandleLoopbackFileHandleCallback(
     }
 }
 
-void HAPPlatformRunLoopCreate(const HAPPlatformRunLoopOptions* options) {
+void HAPPlatformRunLoopCreate(const HAPPlatformRunLoopOptions* options)
+{
     HAPPrecondition(options);
     HAPPrecondition(options->keyValueStore);
+
+    int e;
     HAPError err;
 
     HAPLogDebug(&logObject, "Storage configuration: runLoop = %lu", (unsigned long) sizeof runLoop);
     HAPLogDebug(&logObject, "Storage configuration: fileHandle = %lu", (unsigned long) sizeof(HAPPlatformFileHandle));
     HAPLogDebug(&logObject, "Storage configuration: timer = %lu", (unsigned long) sizeof(HAPPlatformTimer));
 
-    // Open loop back
+    // Open loopback socket.
     HAPPrecondition(runLoop.loopbackFileDescriptor == -1);
-
-    int sd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    int sd = (int)SlNetSock_create(SLNETSOCK_AF_INET, SLNETSOCK_SOCK_DGRAM, SLNETSOCK_PROTO_UDP, 0, 0);
     if (sd < 0) {
-        int _errno = errno;
         HAPPlatformLogPOSIXError(kHAPLogType_Error,
-            "Loopback creation failed (log, call 'socket').",
-            _errno, __func__, HAP_FILE, __LINE__);
+                                 "Loopback creation failed (log, call 'socket').",
+                                 errno, __func__, HAP_FILE, __LINE__);
         HAPFatalError();
     }
 
-    //int sockopt = 1;
-    //int e = setsockopt(sd, SOL_SOCKET, SO_NONBLOCKING, (uint8_t *)&sockopt, sizeof(sockopt));
-    //if (e == -1) {
-    //    HAPPlatformLogPOSIXError(kHAPLogType_Error,
-    //        "System call 'setsockopt' to set loopback socket descriptor flags to 'SO_NONBLOCKING' failed.",
-    //        errno, __func__, HAP_FILE, __LINE__);
-    //    HAPFatalError();
-    //}
-
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(LOOPBACK_PORT);
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (bind(sd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        close(sd);
-        int _errno = errno;
+    int v = 1;
+    e = (int)SlNetSock_setOpt((int16_t)sd, SLNETSOCK_LVL_SOCKET, SLNETSOCK_OPSOCK_NON_BLOCKING, &v, sizeof v);
+    if (e != 0) {
+        ErrnoUtil_set(e);
         HAPPlatformLogPOSIXError(kHAPLogType_Error,
-            "Loopback socket bind failed (log, call 'bind').",
-            _errno, __func__, HAP_FILE, __LINE__);
+                                 "System call 'setsockopt' to set loopback socket options to 'O_NONBLOCK' failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
         HAPFatalError();
     }
 
+    SlNetSock_AddrIn_t sin;
+    HAPRawBufferZero(&sin, sizeof sin);
+    sin.sin_family = SLNETSOCK_AF_INET;
+    sin.sin_port = SlNetUtil_htons(kHAPPlatformRunLoop_LoopbackPort);
+    sin.sin_addr.s_addr = SlNetUtil_htonl(SLNETSOCK_INADDR_ANY);
+
+    e = (int)SlNetSock_bind((int16_t)sd, (const SlNetSock_Addr_t *)&sin, sizeof(sin));
+    if (e != 0) {
+        SlNetSock_close((int16_t)sd);
+        ErrnoUtil_set(e);
+        HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                 "Loopback socket bind failed (log, call 'bind').",
+                                 errno, __func__, HAP_FILE, __LINE__);
+        HAPFatalError();
+    }
+ 
     runLoop.loopbackFileDescriptor = sd;
 
     err = HAPPlatformFileHandleRegister(&runLoop.loopbackFileHandle,
@@ -534,11 +534,12 @@ void HAPPlatformRunLoopCreate(const HAPPlatformRunLoopOptions* options) {
 
     runLoop.state = kHAPPlatformRunLoopState_Idle;
     
-    // Issue memory barrier to ensure visibility of write to runLoop.selfPipeFileDescriptor1 on other threads.
+    // Issue memory barrier to ensure visibility of write to runLoop.loopbackFileDescriptor1 on other threads.
     __sync_synchronize();
 }
 
-void HAPPlatformRunLoopRelease(void) {
+void HAPPlatformRunLoopRelease(void)
+{
     CloseLoopback(runLoop.loopbackFileDescriptor);
 
     runLoop.loopbackFileDescriptor = -1;
@@ -554,19 +555,20 @@ void HAPPlatformRunLoopRelease(void) {
     __sync_synchronize();
 }
 
-void HAPPlatformRunLoopRun(void) {
+void HAPPlatformRunLoopRun(void)
+{
     HAPPrecondition(runLoop.state == kHAPPlatformRunLoopState_Idle);
 
     HAPLogInfo(&logObject, "Entering run loop.");
     runLoop.state = kHAPPlatformRunLoopState_Running;
     do {
-        fd_set readFileDescriptors;
-        fd_set writeFileDescriptors;
-        fd_set errorFileDescriptors;
+        SlNetSock_SdSet_t readFileDescriptors;
+        SlNetSock_SdSet_t writeFileDescriptors;
+        SlNetSock_SdSet_t errorFileDescriptors;
 
-        FD_ZERO(&readFileDescriptors);
-        FD_ZERO(&writeFileDescriptors);
-        FD_ZERO(&errorFileDescriptors);
+        SlNetSock_sdsClrAll(&readFileDescriptors);
+        SlNetSock_sdsClrAll(&writeFileDescriptors);
+        SlNetSock_sdsClrAll(&errorFileDescriptors);
 
         int maxFileDescriptor = -1;
 
@@ -576,8 +578,8 @@ void HAPPlatformRunLoopRun(void) {
             if (fileHandle->fileDescriptor != -1) {
                 if (fileHandle->interests.isReadyForReading) {
                     HAPAssert(fileHandle->fileDescriptor >= 0);
-                    HAPAssert(fileHandle->fileDescriptor < FD_SETSIZE);
-                    FD_SET(fileHandle->fileDescriptor, &readFileDescriptors);
+                    HAPAssert(fileHandle->fileDescriptor < SLNETSOCK_MAX_CONCURRENT_SOCKETS);
+                    SlNetSock_sdsSet(fileHandle->fileDescriptor, &readFileDescriptors);
                     if (fileHandle->fileDescriptor > maxFileDescriptor) {
                         maxFileDescriptor = fileHandle->fileDescriptor;
                     }
@@ -585,8 +587,8 @@ void HAPPlatformRunLoopRun(void) {
                 }
                 if (fileHandle->interests.isReadyForWriting) {
                     HAPAssert(fileHandle->fileDescriptor >= 0);
-                    HAPAssert(fileHandle->fileDescriptor < FD_SETSIZE);
-                    FD_SET(fileHandle->fileDescriptor, &writeFileDescriptors);
+                    HAPAssert(fileHandle->fileDescriptor < SLNETSOCK_MAX_CONCURRENT_SOCKETS);
+                    SlNetSock_sdsSet(fileHandle->fileDescriptor, &writeFileDescriptors);
                     if (fileHandle->fileDescriptor > maxFileDescriptor) {
                         maxFileDescriptor = fileHandle->fileDescriptor;
                     }
@@ -594,8 +596,8 @@ void HAPPlatformRunLoopRun(void) {
                 }
                 if (fileHandle->interests.hasErrorConditionPending) {
                     HAPAssert(fileHandle->fileDescriptor >= 0);
-                    HAPAssert(fileHandle->fileDescriptor < FD_SETSIZE);
-                    FD_SET(fileHandle->fileDescriptor, &errorFileDescriptors);
+                    HAPAssert(fileHandle->fileDescriptor < SLNETSOCK_MAX_CONCURRENT_SOCKETS);
+                    SlNetSock_sdsSet(fileHandle->fileDescriptor, &errorFileDescriptors);
                     if (fileHandle->fileDescriptor > maxFileDescriptor) {
                         maxFileDescriptor = fileHandle->fileDescriptor;
                     }
@@ -624,18 +626,24 @@ void HAPPlatformRunLoopRun(void) {
         }
 
         HAPAssert(maxFileDescriptor >= -1);
-        HAPAssert(maxFileDescriptor < FD_SETSIZE);
-
-        int e = select(
-                maxFileDescriptor + 1, &readFileDescriptors, &writeFileDescriptors, &errorFileDescriptors, timeout);
+        HAPAssert(maxFileDescriptor < SLNETSOCK_MAX_CONCURRENT_SOCKETS);
+        
+        int e = (int)SlNetSock_select(maxFileDescriptor + 1,
+                                      &readFileDescriptors,
+                                      &writeFileDescriptors,
+                                      &errorFileDescriptors,
+                                      timeout);
+        ErrnoUtil_set(e);
         if (e == -1 && errno == EINTR) {
             continue;
         }
         if (e < 0) {
-            int _errno = errno;
-            HAPAssert(e == -1);
-            HAPPlatformLogPOSIXError(
-                    kHAPLogType_Error, "System call 'select' failed.", _errno, __func__, HAP_FILE, __LINE__);
+            HAPPlatformLogPOSIXError(kHAPLogType_Error,
+                                     "System call 'select' failed.",
+                                     errno,
+                                     __func__,
+                                     HAP_FILE,
+                                     __LINE__);
             HAPFatalError();
         }
 
@@ -649,19 +657,21 @@ void HAPPlatformRunLoopRun(void) {
     runLoop.state = kHAPPlatformRunLoopState_Idle;
 }
 
-void HAPPlatformRunLoopStop(void) {
+void HAPPlatformRunLoopStop(void)
+{
     if (runLoop.state == kHAPPlatformRunLoopState_Running) {
         runLoop.state = kHAPPlatformRunLoopState_Stopping;
     }
 }
 
-/*
-HAPError HAPPlatformRunLoopScheduleCallback(
-        HAPPlatformRunLoopCallback callback,
-        void* _Nullable const context,
-        size_t contextSize) {
+HAPError HAPPlatformRunLoopScheduleCallback(HAPPlatformRunLoopCallback callback,
+                                            void* _Nullable const context,
+                                            size_t contextSize)
+{
     HAPPrecondition(callback);
     HAPPrecondition(!contextSize || context);
+
+    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
 
     if (contextSize > UINT8_MAX) {
         HAPLogError(&logObject, "Contexts larger than UINT8_MAX are not supported.");
@@ -687,40 +697,42 @@ HAPError HAPPlatformRunLoopScheduleCallback(
     }
     HAPAssert(numBytes <= sizeof bytes);
 
-    int fileDescriptor = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (fileDescriptor < 0) {
-        int _errno = errno;
+    int sd = (int)SlNetSock_create(SLNETSOCK_AF_INET, SLNETSOCK_SOCK_DGRAM, SLNETSOCK_PROTO_UDP, 0, 0);
+    if (sd < 0) {
+        ErrnoUtil_set(sd);
         HAPPlatformLogPOSIXError(kHAPLogType_Error,
-            "Loopback client socket failed (log, call 'socket').",
-            _errno, __func__, HAP_FILE, __LINE__);
+                                 "Loopback client socket failed (log, call 'socket').",
+                                 errno, __func__, HAP_FILE, __LINE__);
         HAPFatalError();
     }
 
-    int e = fcntl(fileDescriptor, F_SETFL, O_NONBLOCK);
-    if (e == -1) {
+    int v = 1;
+    int e = (int)SlNetSock_setOpt((int16_t)sd, SLNETSOCK_LVL_SOCKET, SLNETSOCK_OPSOCK_NON_BLOCKING, &v, sizeof v);
+    if (e != 0) {
+        ErrnoUtil_set(e);
         HAPPlatformLogPOSIXError(kHAPLogType_Error,
-            "System call 'fcntl' to set loopback send file descriptor flags to 'non-blocking' failed.",
-            errno, __func__, HAP_FILE, __LINE__);
-        //HAPFatalError();
+                                 "System call 'setsockopt' to set loopback client socket options to 'O_NONBLOCK' failed.",
+                                 errno, __func__, HAP_FILE, __LINE__);
     }
     
-    struct sockaddr_in to_addr;
-    to_addr.sin_family = AF_INET;
-    to_addr.sin_port = htons(LOOPBACK_PORT);
-    inet_aton("127.0.0.1", &to_addr.sin_addr);
-    ssize_t n;
+    SlNetSock_AddrIn_t sin;
+    HAPRawBufferZero(&sin, sizeof sin);
+    sin.sin_family = SLNETSOCK_AF_INET;
+    sin.sin_port = SlNetUtil_htons(kHAPPlatformRunLoop_LoopbackPort);
+    SlNetUtil_inetPton(SLNETSOCK_AF_INET, "127.0.0.1", &(sin.sin_addr.s_addr));
+
+    int32_t n;
     do {
-        n = sendto(fileDescriptor, bytes, numBytes, 0, (struct sockaddr *)&to_addr, sizeof(to_addr));
+        n = SlNetSock_sendTo((int16_t)sd, bytes, numBytes, 0, (SlNetSock_Addr_t *)&sin, sizeof(sin));
+        ErrnoUtil_set(n);
     } while (n == -1 && errno == EINTR);
-    close(fileDescriptor);
+    SlNetSock_close((int16_t)sd);
     if (n == -1) {
-        int _errno = errno;
         HAPPlatformLogPOSIXError(kHAPLogType_Error,
-            "Loopback client socket failed to send data (log, call 'sendto').",
-            _errno, __func__, HAP_FILE, __LINE__);
+                                 "Loopback client socket failed to send data (log, call 'sendto').",
+                                 errno, __func__, HAP_FILE, __LINE__);
         return kHAPError_Unknown;
     }
 
     return kHAPError_None;
 }
-*/
