@@ -7,11 +7,20 @@
 
 #pragma once
 
+#include <FreeRTOS.h>
+#include <queue.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+extern QueueHandle_t rxMessageQueue;
+extern QueueHandle_t txMessageQueue;
+
 void UARTTask(void *pvParameters);
+void UARTSendMessage(uint8_t opcode, uint16_t payloadSize, void *payload);
+void SendFanControlCommand(uint16_t value);
+void SendLightControlCommand(uint16_t value);
 
 #ifdef __cplusplus
 }
