@@ -121,7 +121,7 @@ HAPError HAPPlatformKeyValueStoreGet(
         return kHAPError_Unknown;
     }
     
-    HAPLogBufferInfo(&logObject, bytes, maxBytes, "Read %02X.%02X", domain, key);
+    HAPLogBufferDebug(&logObject, bytes, maxBytes, "Read %02X.%02X", domain, key);
 
     // Return the size of the output buffer.
     *numBytes = maxBytes;
@@ -152,7 +152,7 @@ HAPError HAPPlatformKeyValueStoreSet(
     HAPPrecondition(keyValueStore->rootDirectory);
     HAPPrecondition(bytes || numBytes);
 
-    HAPLogBufferInfo(&logObject, bytes, numBytes, "Write %02X.%02X", domain, key);
+    HAPLogBufferDebug(&logObject, bytes, numBytes, "Write %02X.%02X", domain, key);
     
     // Get file name.
     char filePath[SL_FS_MAX_FILE_NAME_LENGTH];
