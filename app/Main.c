@@ -5,13 +5,13 @@
 //  See accompanying file LICENSE_1_0.txt or copy at
 //  http://www.boost.org/LICENSE_1_0.txt
 
+#include "Config.h"
 #include "App.h"
 #include "AppDomains.h"
 #include "Board.h"
 #include "DB.h"
 #include "Event.h"
-#include "Config.h"
-#include "UARTTask.h"
+#include "UART.h"
 #include "Utilities.h"
 
 #include <HAP.h>
@@ -37,11 +37,14 @@
 #define kApp_HostTaskPriority (tskIDLE_PRIORITY + 1)
 #define kApp_HostTaskStackSize (1024) // 32K
 
-#define kApp_MainTaskPriority (tskIDLE_PRIORITY + 2)
+#define kApp_UARTTaskPriority (tskIDLE_PRIORITY + 2)
+#define kApp_UARTTaskStackSize (1024) // 32K
+
+#define kApp_MainTaskPriority (tskIDLE_PRIORITY + 3)
 #define kApp_MainTaskStackSize (2048) // 64K
 
-#define kApp_UARTTaskPriority (tskIDLE_PRIORITY + 3)
-#define kApp_UARTTaskStackSize (1024) // 32K
+#define kApp_RunLoopPriority (tskIDLE_PRIORITY + 3)
+#define kApp_RunLoopStackSize (2048) // 64K
 
 // NWP stop timeout in milliseconds.
 #define kSimpleLink_StopTimeout (200)
@@ -89,7 +92,7 @@ static void StartNetworkProcessor()
 
     // Create the SimpleLink Host Driver task.
     BaseType_t rc = xTaskCreate((TaskFunction_t)sl_Task,  // pvTaskCode
-                                "host",                   // pcName
+                                "Host Driver",            // pcName
                                 kApp_HostTaskStackSize,   // usStackDepth
                                 NULL,                     // pvParameters
                                 kApp_HostTaskPriority,    // uxPriority
@@ -316,6 +319,8 @@ static void InitializeIP()
 void MainTask(void *pvParameters)
 {
     LED_Handle yellowLEDHandle = LED_open(BOARD_LED0, NULL);
+    LED_Handle blueLEDHandle = LED_open(BOARD_LED1, NULL);
+    
     LED_startBlinking(yellowLEDHandle, 250, LED_BLINK_FOREVER);
 
     StartNetworkProcessor();
@@ -339,9 +344,6 @@ void MainTask(void *pvParameters)
 
     InitializePlatform();
     InitializeIP();
-
-    // DEBUG: Reset the key-value store.
-    //HAPRestoreFactorySettings(platform.hapPlatform.keyValueStore);
     
     //PrintDeviceInfo();
     //PrintStorageInfo();
@@ -368,6 +370,7 @@ void MainTask(void *pvParameters)
     AppAccessoryServerStart();
 
     LED_stopBlinking(yellowLEDHandle);
+    LED_setOn(blueLEDHandle, UINT8_MAX);
 
     // Run main loop until explicitly stopped.
     HAPLogInfo(&kHAPLog_Default, "HAPPlatformRunLoopRun");
@@ -387,7 +390,7 @@ int main(void)
 
     // Create the main application task.
     rc = xTaskCreate((TaskFunction_t)MainTask, // pvTaskCode
-                     "main",                   // pcName
+                     "Main",                   // pcName
                      kApp_MainTaskStackSize,   // usStackDepth
                      NULL,                     // pvParameters
                      kApp_MainTaskPriority,    // uxPriority
@@ -397,10 +400,10 @@ int main(void)
         HAPLogError(&kHAPLog_Default, "Failed to create main task.");
         HAPFatalError();
     }
-
+    
     // Create the UART manager task.
     rc = xTaskCreate((TaskFunction_t)UARTTask, // pvTaskCode
-                     "uart",                   // pcName
+                     "UART",                   // pcName
                      kApp_UARTTaskStackSize,   // usStackDepth
                      NULL,                     // pvParameters
                      kApp_UARTTaskPriority,    // uxPriority
