@@ -434,7 +434,7 @@ const uint_least8_t Timer_count = BOARD_TIMERCOUNT;
 // UART
 //--------------------------------------------------------------------
 
-unsigned char uartRingBuffer0[32];
+unsigned char uartRingBuffer0[256];
 
 static UARTCC32XX_Object uartCC32XXObjects[BOARD_UARTCOUNT];
 
