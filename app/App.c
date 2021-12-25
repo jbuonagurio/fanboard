@@ -11,10 +11,8 @@
 #include "AppDomains.h"
 #include "Board.h"
 #include "DB.h"
-
-#include <ti/drivers/apps/LED.h>
-
-static LED_Handle blueLEDHandle;
+#include "FanControl.h"
+#include "UART.h"
 
 /**
  * Global accessory configuration.
@@ -22,16 +20,38 @@ static LED_Handle blueLEDHandle;
 typedef struct {
     struct {
         HAPCharacteristicValue_Active active;
-        HAPCharacteristicValue_CurrentFanState currentState;
-        HAPCharacteristicValue_TargetFanState targetState;
         float fanRotationSpeed;
         HAPCharacteristicValue_RotationDirection fanRotationDirection;
+        bool lightBulbOn;
+        int32_t lightBulbBrightness;
     } state;
     HAPAccessoryServerRef *server;
     HAPPlatformKeyValueStoreRef keyValueStore;
 } AccessoryConfiguration;
 
 static AccessoryConfiguration accessoryConfiguration;
+
+/**
+ * HomeKit accessory that provides the Fan service.
+ *
+ * Note: Not constant to enable BCT Manual Name Change.
+ */
+static HAPAccessory accessory = { .aid = 1,
+                                  .category = kHAPAccessoryCategory_Fans,
+                                  .name = "Haiku",
+                                  .manufacturer = "Big Ass Fans",
+                                  .model = "Haiku1,1",
+                                  .serialNumber = "099DB48E9E28",
+                                  .firmwareVersion = "1",
+                                  .hardwareVersion = "1",
+                                  .services = (const HAPService *const[]) { &accessoryInformationService,
+                                                                            &hapProtocolInformationService,
+                                                                            &pairingService,
+                                                                            &fanService,
+                                                                            &lightBulbService,
+                                                                            NULL },
+                                  .callbacks = { .identify = IdentifyAccessory }
+};
 
 /**
  * Load the accessory state from persistent memory.
@@ -65,16 +85,11 @@ static void LoadAccessoryState(void)
         }
         HAPRawBufferZero(&accessoryConfiguration.state, sizeof accessoryConfiguration.state);
         accessoryConfiguration.state.active = kHAPCharacteristicValue_Active_Inactive;
-        accessoryConfiguration.state.currentState = kHAPCharacteristicValue_CurrentFanState_Idle;
-        accessoryConfiguration.state.targetState = kHAPCharacteristicValue_TargetFanState_Manual;
         accessoryConfiguration.state.fanRotationSpeed = 1;
         accessoryConfiguration.state.fanRotationDirection = kHAPCharacteristicValue_RotationDirection_Clockwise;
+        accessoryConfiguration.state.lightBulbOn = false;
+        accessoryConfiguration.state.lightBulbBrightness = 0;
     }
-
-    if (accessoryConfiguration.state.active == kHAPCharacteristicValue_Active_Inactive)
-        LED_setOff(blueLEDHandle);
-    else 
-        LED_setOn(blueLEDHandle, (uint8_t)accessoryConfiguration.state.fanRotationSpeed);
 }
 
 /**
@@ -84,11 +99,6 @@ static void SaveAccessoryState(void)
 {
     HAPPrecondition(accessoryConfiguration.keyValueStore);
     HAPLogInfo(&kHAPLog_Default, "%s", __func__);
-
-    if (accessoryConfiguration.state.active == kHAPCharacteristicValue_Active_Inactive)
-        LED_setOff(blueLEDHandle);
-    else 
-        LED_setOn(blueLEDHandle, (uint8_t)accessoryConfiguration.state.fanRotationSpeed);
     
     HAPError err;
     err = HAPPlatformKeyValueStoreSet(
@@ -103,27 +113,106 @@ static void SaveAccessoryState(void)
     }
 }
 
-/**
- * HomeKit accessory that provides the Fan service.
- *
- * Note: Not constant to enable BCT Manual Name Change.
- */
+static void ToggleFanActive(void)
+{
+    switch (accessoryConfiguration.state.active) {
+    case kHAPCharacteristicValue_Active_Inactive:
+        accessoryConfiguration.state.active = kHAPCharacteristicValue_Active_Active;
+        SendFanControlCommand(0x0000);
+        break;
+    case kHAPCharacteristicValue_Active_Active:
+        accessoryConfiguration.state.active = kHAPCharacteristicValue_Active_Inactive;
+        SendFanControlCommand(0xFFFF);
+        break;
+    default:
+        break;
+    }
+    
+    HAPLogInfo(&kHAPLog_Default, "%s: %d", __func__, accessoryConfiguration.state.active);
 
-static HAPAccessory accessory = { .aid = 1,
-                                  .category = kHAPAccessoryCategory_Fans,
-                                  .name = "Haiku",
-                                  .manufacturer = "Big Ass Fans",
-                                  .model = "Haiku1,1",
-                                  .serialNumber = "099DB48E9E28",
-                                  .firmwareVersion = "1",
-                                  .hardwareVersion = "1",
-                                  .services = (const HAPService *const[]) { &accessoryInformationService,
-                                                                            &hapProtocolInformationService,
-                                                                            &pairingService,
-                                                                            &fanService,
-                                                                            NULL },
-                                  .callbacks = { .identify = IdentifyAccessory }
-};
+    SaveAccessoryState();
+    HAPAccessoryServerRaiseEvent(accessoryConfiguration.server, &fanActiveCharacteristic, &fanService, &accessory);
+}
+
+static void IncreaseFanRotationSpeed(void)
+{
+
+}
+
+static void DecreaseFanRotationSpeed(void)
+{
+
+}
+
+static void ToggleLightBulbState(void)
+{
+    accessoryConfiguration.state.lightBulbOn = !accessoryConfiguration.state.lightBulbOn;
+    if (accessoryConfiguration.state.lightBulbOn) {
+        SendLightControlCommand(0xFFFF);
+    }
+    else {
+        SendLightControlCommand(0x0000);
+    }
+
+    HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, accessoryConfiguration.state.lightBulbOn ? "true" : "false");
+
+    SaveAccessoryState();
+    HAPAccessoryServerRaiseEvent(accessoryConfiguration.server, &fanActiveCharacteristic, &fanService, &accessory);
+}
+
+static void IncreaseLightBulbBrightness(void)
+{
+
+}
+
+static void DecreaseLightBulbBrightness(void)
+{
+
+}
+
+/**
+ * Signal handler. Invoked from the run loop.
+ */
+static void HandleRemoteControlEventCallback(void *_Nullable context, size_t contextSize)
+{
+    HAPPrecondition(context);
+    HAPAssert(contextSize == sizeof(uint16_t));
+    
+    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
+    
+    uint16_t event = *((uint16_t *) context);
+    switch (event) {
+    case kRemoteControlEvent_FanOnOff:
+        ToggleFanActive();
+        break;
+    case kRemoteControlEvent_LightOnOff:
+        ToggleLightBulbState();
+        break;
+    case kRemoteControlEvent_FanPlus:
+        IncreaseFanRotationSpeed();
+        break;
+    case kRemoteControlEvent_FanMinus:
+        DecreaseFanRotationSpeed();
+        break;
+    case kRemoteControlEvent_LightPlus:
+        IncreaseLightBulbBrightness();
+        break;
+    case kRemoteControlEvent_LightMinus:
+        DecreaseLightBulbBrightness();
+        break;
+    default:
+        break;
+    }
+}
+
+void HandleRemoteControlEvent(uint16_t event)
+{
+    HAPError err = HAPPlatformRunLoopScheduleCallback(HandleRemoteControlEventCallback, &event, sizeof event);
+    if (err) {
+        HAPLogError(&kHAPLog_Default, "HAPPlatformRunLoopScheduleCallback failed.");
+        HAPFatalError();
+    }
+}
 
 HAP_RESULT_USE_CHECK
 HAPError IdentifyAccessory(HAPAccessoryServerRef *server HAP_UNUSED,
@@ -173,74 +262,9 @@ HAPError HandleFanActiveWrite(HAPAccessoryServerRef* server,
 
     if (accessoryConfiguration.state.active != active) {
         accessoryConfiguration.state.active = active;
-        HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
+        ToggleFanActive();
         SaveAccessoryState();
-    }
-    return kHAPError_None;
-}
-
-HAP_RESULT_USE_CHECK
-HAPError HandleCurrentFanStateRead(HAPAccessoryServerRef* server HAP_UNUSED,
-                                   const HAPUInt8CharacteristicReadRequest* request HAP_UNUSED,
-                                   uint8_t* value,
-                                   void* _Nullable context HAP_UNUSED)
-{
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
-    *value = accessoryConfiguration.state.currentState;
-    switch (*value) {
-        case kHAPCharacteristicValue_CurrentFanState_Inactive: {
-            HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, "CurrentFanState_Inactive");
-        } break;
-        case kHAPCharacteristicValue_CurrentFanState_Idle: {
-            HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, "CurrentFanState_Idle");
-        } break;
-        case kHAPCharacteristicValue_CurrentFanState_BlowingAir: {
-            HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, "CurrentFanState_BlowingAir");
-        } break;
-    }
-    return kHAPError_None;
-}
-
-HAP_RESULT_USE_CHECK
-HAPError HandleTargetFanStateRead(HAPAccessoryServerRef* server HAP_UNUSED,
-                                  const HAPUInt8CharacteristicReadRequest* request HAP_UNUSED,
-                                  uint8_t* value,
-                                  void* _Nullable context HAP_UNUSED)
-{
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
-    *value = accessoryConfiguration.state.targetState;
-    switch (*value) {
-        case kHAPCharacteristicValue_TargetFanState_Auto: {
-            HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, "TargetFanState_Auto");
-        } break;
-        case kHAPCharacteristicValue_TargetFanState_Manual: {
-            HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, "TargetFanState_Manual");
-        } break;
-    }
-    return kHAPError_None;
-}
-
-HAP_RESULT_USE_CHECK
-HAPError HandleTargetFanStateWrite(HAPAccessoryServerRef* server,
-                                   const HAPUInt8CharacteristicWriteRequest* request,
-                                   uint8_t value,
-                                   void* _Nullable context HAP_UNUSED)
-{
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
-    HAPCharacteristicValue_TargetFanState targetState = (HAPCharacteristicValue_TargetFanState) value;
-    switch (targetState) {
-        case kHAPCharacteristicValue_TargetFanState_Auto: {
-            HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, "TargetFanState_Auto");
-        } break;
-        case kHAPCharacteristicValue_TargetFanState_Manual: {
-            HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, "TargetFanState_Manual");
-        } break;
-    }
-
-    if (accessoryConfiguration.state.targetState != targetState) {
-        accessoryConfiguration.state.targetState = targetState;
         HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
-        SaveAccessoryState();
     }
     return kHAPError_None;
 }
@@ -265,8 +289,9 @@ HAPError HandleFanRotationSpeedWrite(HAPAccessoryServerRef *server,
     HAPLogInfo(&kHAPLog_Default, "%s: %d", __func__, (int)(value));
     if (accessoryConfiguration.state.fanRotationSpeed != value) {
         accessoryConfiguration.state.fanRotationSpeed = value;
-        HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
+        // Set fan rotation speed
         SaveAccessoryState();
+        HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
     }
     return kHAPError_None;
 }
@@ -309,8 +334,63 @@ HAPError HandleFanRotationDirectionWrite(HAPAccessoryServerRef* server,
 
     if (accessoryConfiguration.state.fanRotationDirection != fanRotationDirection) {
         accessoryConfiguration.state.fanRotationDirection = fanRotationDirection;
-        HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
+        // Set fan rotation direction
         SaveAccessoryState();
+        HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
+    }
+    return kHAPError_None;
+}
+
+HAP_RESULT_USE_CHECK
+HAPError HandleLightBulbOnRead(HAPAccessoryServerRef *server HAP_UNUSED,
+                               const HAPBoolCharacteristicReadRequest *request HAP_UNUSED,
+                               bool *value,
+                               void *_Nullable context HAP_UNUSED)
+{
+    *value = accessoryConfiguration.state.lightBulbOn;
+    HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, *value ? "true" : "false");
+    return kHAPError_None;
+}
+
+HAP_RESULT_USE_CHECK
+HAPError HandleLightBulbOnWrite(HAPAccessoryServerRef *server,
+                                const HAPBoolCharacteristicWriteRequest *request,
+                                bool value,
+                                void *_Nullable context HAP_UNUSED)
+{
+    HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, value ? "true" : "false");
+    if (accessoryConfiguration.state.lightBulbOn != value) {
+        accessoryConfiguration.state.lightBulbOn = value;
+        ToggleLightBulbState();
+        SaveAccessoryState();
+        HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
+    }
+    return kHAPError_None;
+}
+
+HAP_RESULT_USE_CHECK
+HAPError HandleLightBulbBrightnessRead(HAPAccessoryServerRef *server,
+                                        const HAPIntCharacteristicReadRequest *request,
+                                        int32_t* value,
+                                        void* _Nullable context HAP_UNUSED)
+{
+    *value = accessoryConfiguration.state.lightBulbBrightness;
+    HAPLogInfo(&kHAPLog_Default, "%s: %d", __func__, (int)(*value));
+    return kHAPError_None;
+}
+
+HAP_RESULT_USE_CHECK
+HAPError HandleLightBulbBrightnessWrite(HAPAccessoryServerRef *server,
+                                         const HAPIntCharacteristicWriteRequest *request,
+                                         int32_t value,
+                                         void* _Nullable context HAP_UNUSED)
+{
+    HAPLogInfo(&kHAPLog_Default, "%s: %d", __func__, (int)(value));
+    if (accessoryConfiguration.state.lightBulbBrightness != value) {
+        accessoryConfiguration.state.lightBulbBrightness = value;
+        // Set brightness
+        SaveAccessoryState();
+        HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
     }
     return kHAPError_None;
 }
@@ -380,7 +460,8 @@ void AppInitialize(HAPAccessoryServerOptions *serverOptions HAP_UNUSED,
 {
     HAPLogInfo(&kHAPLog_Default, "%s", __func__);
     
-    blueLEDHandle = LED_open(BOARD_LED1, NULL);
+    // Start the initialization sequence for the fan.
+    //UARTSendMessage(0x04, 0, NULL);
 }
 
 void AppDeinitialize()

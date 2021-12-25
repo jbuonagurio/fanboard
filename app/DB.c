@@ -36,12 +36,15 @@
 #define kIID_FanServiceSignature       ((uint64_t) 0x0031)
 #define kIID_FanName                   ((uint64_t) 0x0032)
 #define kIID_FanActive                 ((uint64_t) 0x0033)
-#define kIID_CurrentFanState           ((uint64_t) 0x0034)
-#define kIID_TargetFanState            ((uint64_t) 0x0035)
-#define kIID_FanRotationSpeed          ((uint64_t) 0x0036)
-#define kIID_FanRotationDirection      ((uint64_t) 0x0037)
+#define kIID_FanRotationSpeed          ((uint64_t) 0x0034)
+#define kIID_FanRotationDirection      ((uint64_t) 0x0035)
 
-HAP_STATIC_ASSERT(kAttributeCount == 9 + 3 + 5 + 8, AttributeCount_mismatch);
+#define kIID_LightBulb                 ((uint64_t) 0x0040)
+#define kIID_LightBulbName             ((uint64_t) 0x0041)
+#define kIID_LightBulbOn               ((uint64_t) 0x0042)
+#define kIID_LightBulbBrightness       ((uint64_t) 0x0043)
+
+HAP_STATIC_ASSERT(kAttributeCount == 9 + 3 + 5 + 6 + 4, AttributeCount_mismatch);
 
 //----------------------------------------------------------------------------------------------------------------------
 // Accessory Information service.
@@ -467,58 +470,6 @@ const HAPUInt8Characteristic fanActiveCharacteristic = {
     .callbacks = { .handleRead = HandleFanActiveRead, .handleWrite = HandleFanActiveWrite }
 };
 
-const HAPUInt8Characteristic currentFanStateCharacteristic = {
-    .format = kHAPCharacteristicFormat_UInt8,
-    .iid = kIID_CurrentFanState,
-    .characteristicType = &kHAPCharacteristicType_CurrentFanState,
-    .debugDescription = kHAPCharacteristicDebugDescription_CurrentFanState,
-    .manufacturerDescription = NULL,
-    .properties = { .readable = true,
-                    .writable = false,
-                    .supportsEventNotification = true,
-                    .hidden = false,
-                    .requiresTimedWrite = false,
-                    .supportsAuthorizationData = false,
-                    .ip = { .controlPoint = false, .supportsWriteResponse = false },
-                    .ble = { .supportsBroadcastNotification = true,
-                             .supportsDisconnectedNotification = true,
-                             .readableWithoutSecurity = false,
-                             .writableWithoutSecurity = false } },
-    .units = kHAPCharacteristicUnits_None,
-    .constraints = { .minimumValue = 0,
-                     .maximumValue = 3,
-                     .stepValue = 1,
-                     .validValues = NULL,
-                     .validValuesRanges = NULL },
-    .callbacks = { .handleRead = HandleCurrentFanStateRead, .handleWrite = NULL }
-};
-
-const HAPUInt8Characteristic targetFanStateCharacteristic = {
-    .format = kHAPCharacteristicFormat_UInt8,
-    .iid = kIID_TargetFanState,
-    .characteristicType = &kHAPCharacteristicType_TargetFanState,
-    .debugDescription = kHAPCharacteristicDebugDescription_TargetFanState,
-    .manufacturerDescription = NULL,
-    .properties = { .readable = true,
-                    .writable = true,
-                    .supportsEventNotification = true,
-                    .hidden = false,
-                    .requiresTimedWrite = true,
-                    .supportsAuthorizationData = false,
-                    .ip = { .controlPoint = false, .supportsWriteResponse = false },
-                    .ble = { .supportsBroadcastNotification = true,
-                             .supportsDisconnectedNotification = true,
-                             .readableWithoutSecurity = false,
-                             .writableWithoutSecurity = false } },
-    .units = kHAPCharacteristicUnits_None,
-    .constraints = { .minimumValue = 0,
-                     .maximumValue = 1,
-                     .stepValue = 1,
-                     .validValues = NULL,
-                     .validValuesRanges = NULL },
-    .callbacks = { .handleRead = HandleTargetFanStateRead, .handleWrite = HandleTargetFanStateWrite }
-};
-
 const HAPIntCharacteristic fanRotationDirectionCharacteristic = {
     .format = kHAPCharacteristicFormat_Int,
     .iid = kIID_FanRotationDirection,
@@ -577,9 +528,140 @@ const HAPService fanService = {
     .characteristics = (const HAPCharacteristic* const[]) { &fanServiceSignatureCharacteristic,
                                                             &fanNameCharacteristic,
                                                             &fanActiveCharacteristic,
-                                                            &currentFanStateCharacteristic,
-                                                            &targetFanStateCharacteristic,
                                                             &fanRotationSpeedCharacteristic,
                                                             &fanRotationDirectionCharacteristic,
                                                             NULL }
+};
+
+//----------------------------------------------------------------------------------------------------------------------
+// Lightbulb service.
+//----------------------------------------------------------------------------------------------------------------------
+
+/**
+ * The 'Name' characteristic of the Lightbulb service.
+ */
+static const HAPStringCharacteristic lightBulbNameCharacteristic = {
+    .format = kHAPCharacteristicFormat_String,
+    .iid = kIID_LightBulbName,
+    .characteristicType = &kHAPCharacteristicType_Name,
+    .debugDescription = kHAPCharacteristicDebugDescription_Name,
+    .manufacturerDescription = NULL,
+    .properties = {
+        .readable = true,
+        .writable = false,
+        .supportsEventNotification = false,
+        .hidden = false,
+        .requiresTimedWrite = false,
+        .supportsAuthorizationData = false,
+        .ip = {
+            .controlPoint = false,
+            .supportsWriteResponse = false
+        },
+        .ble = {
+            .supportsBroadcastNotification = false,
+            .supportsDisconnectedNotification = false,
+            .readableWithoutSecurity = false,
+            .writableWithoutSecurity = false
+        }
+    },
+    .constraints = {
+        .maxLength = 64
+    },
+    .callbacks = {
+        .handleRead = HAPHandleNameRead,
+        .handleWrite = NULL
+    }
+};
+
+/**
+ * The 'On' characteristic of the Lightbulb service.
+ */
+const HAPBoolCharacteristic lightBulbOnCharacteristic = {
+    .format = kHAPCharacteristicFormat_Bool,
+    .iid = kIID_LightBulbOn,
+    .characteristicType = &kHAPCharacteristicType_On,
+    .debugDescription = kHAPCharacteristicDebugDescription_On,
+    .manufacturerDescription = NULL,
+    .properties = {
+        .readable = true,
+        .writable = true,
+        .supportsEventNotification = true,
+        .hidden = false,
+        .requiresTimedWrite = false,
+        .supportsAuthorizationData = false,
+        .ip = {
+            .controlPoint = false,
+            .supportsWriteResponse = false
+        },
+        .ble = {
+            .supportsBroadcastNotification = true,
+            .supportsDisconnectedNotification = true,
+            .readableWithoutSecurity = false,
+            .writableWithoutSecurity = false
+        }
+    },
+    .callbacks = {
+        .handleRead = HandleLightBulbOnRead,
+        .handleWrite = HandleLightBulbOnWrite
+    }
+};
+/**
+ * The 'Brightness' characteristic of the Lightbulb service.
+ */
+const HAPIntCharacteristic lightBulbBrightnessCharacteristic = {
+    .format = kHAPCharacteristicFormat_Int,
+    .iid = kIID_LightBulbBrightness,
+    .characteristicType = &kHAPCharacteristicType_Brightness,
+    .debugDescription = kHAPCharacteristicDebugDescription_Brightness,
+    .manufacturerDescription = NULL,
+    .properties = {
+        .readable = true,
+        .writable = true,
+        .supportsEventNotification = true,
+        .hidden = false,
+        .requiresTimedWrite = false,
+        .supportsAuthorizationData = false,
+        .ip = {
+            .controlPoint = false,
+            .supportsWriteResponse = false
+        },
+        .ble = {
+            .supportsBroadcastNotification = true,
+            .supportsDisconnectedNotification = true,
+            .readableWithoutSecurity = false,
+            .writableWithoutSecurity = false
+        }
+    },
+    .units = kHAPCharacteristicUnits_Percentage,
+    .constraints = { .minimumValue = 0,
+                     .maximumValue = 100,
+                     .stepValue = 1 },
+    .callbacks = {
+        .handleRead = HandleLightBulbBrightnessRead,
+        .handleWrite = HandleLightBulbBrightnessWrite
+    }
+};
+
+/**
+ * The Lightbulb service that contains the 'On' characteristic.
+ */
+const HAPService lightBulbService = {
+    .iid = kIID_LightBulb,
+    .serviceType = &kHAPServiceType_LightBulb,
+    .debugDescription = kHAPServiceDebugDescription_LightBulb,
+    .name = "Light",
+    .properties = {
+        .primaryService = false,
+        .hidden = false,
+        .ble = {
+            .supportsConfiguration = false
+        }
+    },
+    .linkedServices = NULL,
+    .characteristics = (const HAPCharacteristic *const[]) {
+        &lightBulbNameCharacteristic,
+        &lightBulbOnCharacteristic,
+        &lightBulbBrightnessCharacteristic,
+        NULL
+    }
 };

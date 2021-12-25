@@ -18,6 +18,11 @@ extern "C" {
 #endif
 
 /**
+ * Handle a remote control event from the accessory.
+ */
+void HandleRemoteControlEvent(uint16_t event);
+
+/**
  * Identify routine. Used to locate the accessory.
  */
 HAP_RESULT_USE_CHECK
@@ -42,33 +47,6 @@ HAPError HandleFanActiveWrite(HAPAccessoryServerRef* server,
                               const HAPUInt8CharacteristicWriteRequest* request,
                               uint8_t value,
                               void* _Nullable context);
-
-/**
- * Handle read request to the 'CurrentState' characteristic of the Fan service.
- */
-HAP_RESULT_USE_CHECK
-HAPError HandleCurrentFanStateRead(HAPAccessoryServerRef* server,
-                                   const HAPUInt8CharacteristicReadRequest* request,
-                                   uint8_t* value,
-                                   void* _Nullable context);
-
-/**
- * Handle read request to the 'TargetState' characteristic of the Fan service.
- */
-HAP_RESULT_USE_CHECK
-HAPError HandleTargetFanStateRead(HAPAccessoryServerRef* server,
-                                  const HAPUInt8CharacteristicReadRequest* request,
-                                  uint8_t* value,
-                                  void* _Nullable context);
-
-/**
- * Handle write request to the 'TargetState' characteristic of the Fan service.
- */
-HAP_RESULT_USE_CHECK
-HAPError HandleTargetFanStateWrite(HAPAccessoryServerRef* server,
-                                   const HAPUInt8CharacteristicWriteRequest* request,
-                                   uint8_t value,
-                                   void* _Nullable context);
 
 /**
  * Handle read request to the 'Rotation Speed' characteristic of the Fan service.
@@ -101,6 +79,42 @@ HAPError HandleFanRotationDirectionRead(HAPAccessoryServerRef *server,
  */
 HAP_RESULT_USE_CHECK
 HAPError HandleFanRotationDirectionWrite(HAPAccessoryServerRef *server,
+                                         const HAPIntCharacteristicWriteRequest *request,
+                                         int32_t value,
+                                         void* _Nullable context);
+
+/**
+ * Handle read request to the 'On' characteristic of the LightBulb service.
+ */
+HAP_RESULT_USE_CHECK
+HAPError HandleLightBulbOnRead(HAPAccessoryServerRef *server,
+                               const HAPBoolCharacteristicReadRequest *request,
+                               bool *value,
+                               void *_Nullable context);
+
+/**
+ * Handle write request to the 'On' characteristic of the LightBulb service.
+ */
+HAP_RESULT_USE_CHECK
+HAPError HandleLightBulbOnWrite(HAPAccessoryServerRef *server,
+                                const HAPBoolCharacteristicWriteRequest *request,
+                                bool value,
+                                void *_Nullable context);
+
+/**
+ * Handle read request to the 'Brightness' characteristic of the LightBulb service.
+ */
+HAP_RESULT_USE_CHECK
+HAPError HandleLightBulbBrightnessRead(HAPAccessoryServerRef *server,
+                                        const HAPIntCharacteristicReadRequest *request,
+                                        int32_t* value,
+                                        void* _Nullable context);
+
+/**
+ * Handle write request to the 'Brightness' characteristic of the LightBulb service.
+ */
+HAP_RESULT_USE_CHECK
+HAPError HandleLightBulbBrightnessWrite(HAPAccessoryServerRef *server,
                                          const HAPIntCharacteristicWriteRequest *request,
                                          int32_t value,
                                          void* _Nullable context);
