@@ -37,7 +37,10 @@
 // Called from within xQueueCreate() or xQueueCreateStatic() if the
 // queue was not successfully created due to there being insufficient
 // heap memory available.
-#define traceQUEUE_CREATE_FAILED(ucQueueType)
+#define traceQUEUE_CREATE_FAILED(ucQueueType) SEGGER_RTT_printf(0,     \
+ "\x1B[1;30m            \tTrace\t"                                     \
+ "QUEUE_CREATE_FAILED (%u)\n\x1B[0m",                                  \
+ ucQueueType);
 
 // Called from within xSemaphoreCreateMutex() if the mutex was
 // successfully created.
@@ -46,7 +49,9 @@
 // Called from within xSemaphoreCreateMutex() if the mutex was not
 // successfully created due to there being insufficient heap memory
 // available.
-#define traceCREATE_MUTEX_FAILED()
+#define traceCREATE_MUTEX_FAILED() SEGGER_RTT_printf(0,                \
+ "\x1B[1;30m            \tTrace\t"                                     \
+ "CREATE_MUTEX_FAILED\n\x1B[0m");                                      \
 
 // Called from within xSemaphoreGiveRecursive() if the mutex was
 // successfully ‘given’.
@@ -54,10 +59,13 @@
 
 // Called from within xSemaphoreGiveRecursive() if the mutex was not
 // successfully given as the calling task was not the mutex owner.
+#define traceGIVE_MUTEX_RECURSIVE_FAILED(xMutex)
+/*
 #define traceGIVE_MUTEX_RECURSIVE_FAILED(xMutex) SEGGER_RTT_printf(0,  \
  "\x1B[1;30m            \tTrace\t"                                     \
- "GIVE_MUTEX_RECURSIVE_FAILED (%d)'\n\x1B[0m",                         \
+ "GIVE_MUTEX_RECURSIVE_FAILED (%d)\n\x1B[0m",                          \
  xMutex->uxQueueNumber);
+*/
 
 // Called from within xQueueTakeMutexRecursive().
 #define traceTAKE_MUTEX_RECURSIVE(xMutex)
@@ -80,9 +88,13 @@
 // xQueueSendToBack(), or any of the semaphore ‘give’ functions when the
 // queue send operation failed due to the queue being full (after any
 // block time that was specified).
+#define traceQUEUE_SEND_FAILED(xQueue)
+/*
 #define traceQUEUE_SEND_FAILED(xQueue) SEGGER_RTT_printf(0,            \
- "\x1B[1;30m            \tTrace\tQUEUE_SEND_FAILED (%d)'\n\x1B[0m",    \
+ "\x1B[1;30m            \tTrace\t"                                     \
+ "QUEUE_SEND_FAILED (%d)\n\x1B[0m",                                    \
  xQueue->uxQueueNumber);
+*/
 
 // Called from within xQueueReceive() or any of the semaphore ‘take’
 // functions when the queue receive was successful.
@@ -91,9 +103,13 @@
 // Called from within xQueueReceive() or any of the semaphore ‘take’
 // functions when the queue receive operation failed because the queue
 // was empty (after any block time that was specified).
+#define traceQUEUE_RECEIVE_FAILED(xQueue)
+/*
 #define traceQUEUE_RECEIVE_FAILED(xQueue) SEGGER_RTT_printf(0,         \
- "\x1B[1;30m            \tTrace\tQUEUE_RECEIVE_FAILED (%d)'\n\x1B[0m", \
+ "\x1B[1;30m            \tTrace\t"                                     \
+ "QUEUE_RECEIVE_FAILED (%d)\n\x1B[0m",                                 \
  xQueue->uxQueueNumber);
+*/
 
 // Called from within xQueuePeek()
 #define traceQUEUE_PEEK(xQueue)
@@ -104,10 +120,13 @@
 
 // Called from within xQueueSendFromISR() when the send operation failed
 // due to the queue already being full.
+#define traceQUEUE_SEND_FROM_ISR_FAILED(xQueue)
+/*
 #define traceQUEUE_SEND_FROM_ISR_FAILED(xQueue) SEGGER_RTT_printf(0,   \
  "\x1B[1;30m            \tTrace\t"                                     \
- "QUEUE_SEND_FROM_ISR_FAILED (%d)'\n\x1B[0m",                          \
+ "QUEUE_SEND_FROM_ISR_FAILED (%d)\n\x1B[0m",                           \
  xQueue->uxQueueNumber);
+*/
 
 // Called from within xQueueReceiveFromISR() when the receive operation
 // was successful.
@@ -115,27 +134,36 @@
 
 // Called from within xQueueReceiveFromISR() when the receive operation
 // failed due to the queue already being empty.
+#define traceQUEUE_RECEIVE_FROM_ISR_FAILED(xQueue)
+/*
 #define traceQUEUE_RECEIVE_FROM_ISR_FAILED(xQueue) SEGGER_RTT_printf(0,\
  "\x1B[1;30m            \tTrace\t"                                     \
- "QUEUE_RECEIVE_FROM_ISR_FAILED (%d)'\n\x1B[0m",                       \
+ "QUEUE_RECEIVE_FROM_ISR_FAILED (%d)\n\x1B[0m",                        \
  xQueue->uxQueueNumber);
-
+*/
 // Called from within vQueueDelete().
 #define traceQUEUE_DELETE(xQueue)
 
 // Called from within xTaskCreate() (or xTaskCreateStatic()) when the
 // task is successfully created.
-#define traceTASK_CREATE(xTask)
+#define traceTASK_CREATE(xTask) SEGGER_RTT_printf(0,                   \
+ "\x1B[1;30m            \tTrace\t"                                     \
+ "TASK_CREATE (%s)\n\x1B[0m",                                          \
+ xTask->pcTaskName);
 
 // Called from within xTaskCreate() (or xTaskCreateStatic()) when the
 // task was not successfully created due to there being insufficient
 // heap space available.
 #define traceTASK_CREATE_FAILED(pxNewTCB) SEGGER_RTT_printf(0,         \
- "\x1B[1;30m            \tTrace\tTASK_CREATE_FAILED (%s)'\n\x1B[0m",   \
+ "\x1B[1;30m            \tTrace\t"                                     \
+ "TASK_CREATE_FAILED (%s)\n\x1B[0m",                                   \
  pxNewTCB->pcTaskName);
 
 // Called from within vTaskDelete().
-#define traceTASK_DELETE(xTask)
+#define traceTASK_DELETE(xTask) SEGGER_RTT_printf(0,                   \
+ "\x1B[1;30m            \tTrace\t"                                     \
+ "TASK_DELETE (%s)\n\x1B[0m",                                          \
+ xTask->pcTaskName);
 
 // Called from within vTaskDelayUntil().
 #define traceTASK_DELAY_UNTIL(xTimeToWake)
@@ -172,7 +200,8 @@
 // Called from within xTimerCreate() if the timer was not successfully
 // created due to there being insufficient heap memory available.
 #define traceTIMER_CREATE_FAILED() SEGGER_RTT_printf(0,                \
- "\x1B[1;30m            \tTrace\tTIMER_CREATE_FAILED'\n\x1B[0m");
+ "\x1B[1;30m            \tTrace\t"                                     \
+ "TIMER_CREATE_FAILED\n\x1B[0m");
 
 // Called when a software timer expires, before the timer callback is
 // executed.
