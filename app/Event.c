@@ -29,29 +29,29 @@ void SimpleLinkFatalErrorEventHandler(SlDeviceFatal_t *pSlFatalErrorEvent)
 
     switch (pSlFatalErrorEvent->Id) {
     case SL_DEVICE_EVENT_FATAL_DEVICE_ABORT:
-        HAPLogError(&logObject, "Device Abort (0x%lX)",
+        HAPLogFault(&logObject, "Device abort (0x%lX)",
                     pSlFatalErrorEvent->Data.DeviceAssert.Code);
         HAPFatalError();
         break;
     case SL_DEVICE_EVENT_FATAL_DRIVER_ABORT:
-        HAPLogError(&logObject, "Driver Abort");
+        HAPLogFault(&logObject, "Driver abort");
         HAPFatalError();
         break;
     case SL_DEVICE_EVENT_FATAL_NO_CMD_ACK:
-        HAPLogError(&logObject, "No Command Ack (0x%lX)",
+        HAPLogFault(&logObject, "No command ack (0x%lX)",
                     pSlFatalErrorEvent->Data.NoCmdAck.Code);
         HAPFatalError();
         break;
     case SL_DEVICE_EVENT_FATAL_SYNC_LOSS:
-        HAPLogError(&logObject, "Sync Loss");
+        HAPLogFault(&logObject, "Sync loss");
         HAPFatalError();
         break;
     case SL_DEVICE_EVENT_FATAL_CMD_TIMEOUT:
-        HAPLogError(&logObject, "Command Timeout (0x%lX)",
+        HAPLogFault(&logObject, "Command timeout (0x%lX)",
                     pSlFatalErrorEvent->Data.CmdTimeout.Code);
         break;
     default:
-        HAPLogError(&logObject, "Unknown Event (0x%lX)", pSlFatalErrorEvent->Id);
+        HAPLogFault(&logObject, "Unknown event (0x%lX)", pSlFatalErrorEvent->Id);
         HAPFatalError();
         break;
     }
@@ -60,8 +60,22 @@ void SimpleLinkFatalErrorEventHandler(SlDeviceFatal_t *pSlFatalErrorEvent)
 void SimpleLinkGeneralEventHandler(SlDeviceEvent_t *pSlDeviceEvent)
 {
     static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "SlDeviceEvent" };
-
-    HAPLogInfo(&logObject, "Unknown Event (0x%lX)", pSlDeviceEvent->Id);
+    
+    switch (pSlDeviceEvent->Id) {
+    case SL_DEVICE_EVENT_RESET_REQUEST:
+        HAPLogInfo(&logObject, "Device reset request (Status=%d, Caller=%u)",
+                   pSlDeviceEvent->Data.ResetRequest.Status,
+                   pSlDeviceEvent->Data.ResetRequest.Caller);
+        break;
+    case SL_DEVICE_EVENT_ERROR:
+        HAPLogError(&logObject, "Device error (Source=0x%02X, Code=%d)",
+                    (unsigned short)pSlDeviceEvent->Data.Error.Source,
+                    pSlDeviceEvent->Data.Error.Code);
+        break;
+    default:
+        HAPLogInfo(&logObject, "Unknown event (0x%lX)", pSlDeviceEvent->Id);
+        break;
+    }
 }
 
 static void InitializeNetworkServices()
@@ -81,7 +95,7 @@ void SimpleLinkNetAppEventHandler(SlNetAppEvent_t *pSlNetAppEvent)
 
     switch (pSlNetAppEvent->Id) {
     case SL_NETAPP_EVENT_IPV4_ACQUIRED:
-        HAPLogInfo(&logObject, "IPv4 Acquired (%u.%u.%u.%u)",
+        HAPLogInfo(&logObject, "IPv4 acquired (%u.%u.%u.%u)",
             (unsigned short)SL_IPV4_BYTE(pSlNetAppEvent->Data.IpAcquiredV4.Ip, 3),
             (unsigned short)SL_IPV4_BYTE(pSlNetAppEvent->Data.IpAcquiredV4.Ip, 2),
             (unsigned short)SL_IPV4_BYTE(pSlNetAppEvent->Data.IpAcquiredV4.Ip, 1),
@@ -90,7 +104,7 @@ void SimpleLinkNetAppEventHandler(SlNetAppEvent_t *pSlNetAppEvent)
         xTaskNotifyIndexed(mainTaskHandle, 0, kApplicationEvent_IPAcquired, eSetValueWithOverwrite);
         break;
     case SL_NETAPP_EVENT_IPV6_ACQUIRED:
-        HAPLogInfo(&logObject, "IPv6 Acquired (%04lX:%04lX:%04lX:%04lX)",
+        HAPLogInfo(&logObject, "IPv6 acquired (%04lX:%04lX:%04lX:%04lX)",
             (unsigned long)pSlNetAppEvent->Data.IpAcquiredV6.Ip[0],
             (unsigned long)pSlNetAppEvent->Data.IpAcquiredV6.Ip[1],
             (unsigned long)pSlNetAppEvent->Data.IpAcquiredV6.Ip[2],
@@ -99,49 +113,47 @@ void SimpleLinkNetAppEventHandler(SlNetAppEvent_t *pSlNetAppEvent)
         xTaskNotifyIndexed(mainTaskHandle, 0, kApplicationEvent_IPAcquired, eSetValueWithOverwrite);
         break;
     case SL_NETAPP_EVENT_IP_COLLISION:
-        HAPLogInfo(&logObject, "IP Collision");
+        HAPLogInfo(&logObject, "IP collision");
         break;
     case SL_NETAPP_EVENT_DHCPV4_LEASED:
-        HAPLogInfo(&logObject, "DHCPv4 Leased (%u.%u.%u.%u)",
+        HAPLogInfo(&logObject, "DHCPv4 leased (%u.%u.%u.%u)",
             (unsigned short)SL_IPV4_BYTE(pSlNetAppEvent->Data.IpLeased.IpAddress, 3),
             (unsigned short)SL_IPV4_BYTE(pSlNetAppEvent->Data.IpLeased.IpAddress, 2),
             (unsigned short)SL_IPV4_BYTE(pSlNetAppEvent->Data.IpLeased.IpAddress, 1),
             (unsigned short)SL_IPV4_BYTE(pSlNetAppEvent->Data.IpLeased.IpAddress, 0));
         break;
     case SL_NETAPP_EVENT_DHCPV4_RELEASED:
-        HAPLogInfo(&logObject, "DHCPv4 Released (%u.%u.%u.%u)",
+        HAPLogInfo(&logObject, "DHCPv4 released (%u.%u.%u.%u)",
             (unsigned short)SL_IPV4_BYTE(pSlNetAppEvent->Data.IpReleased.IpAddress, 3),
             (unsigned short)SL_IPV4_BYTE(pSlNetAppEvent->Data.IpReleased.IpAddress, 2),
             (unsigned short)SL_IPV4_BYTE(pSlNetAppEvent->Data.IpReleased.IpAddress, 1),
             (unsigned short)SL_IPV4_BYTE(pSlNetAppEvent->Data.IpReleased.IpAddress, 0));
         break;
     case SL_NETAPP_EVENT_HTTP_TOKEN_GET:
-        HAPLogInfo(&logObject, "HTTP Token Get");
         break;
     case SL_NETAPP_EVENT_HTTP_TOKEN_POST:
-        HAPLogInfo(&logObject, "HTTP Token Post");
         break;
     case SL_NETAPP_EVENT_IPV4_LOST:
-        HAPLogInfo(&logObject, "IPv4 Lost");
+        HAPLogInfo(&logObject, "IPv4 lost");
         break;
     case SL_NETAPP_EVENT_DHCP_IPV4_ACQUIRE_TIMEOUT:
-        HAPLogInfo(&logObject, "DHCP IPv4 Acquire Timeout");
+        HAPLogInfo(&logObject, "DHCP IPv4 acquire timeout");
         break;
     case SL_NETAPP_EVENT_IPV6_LOST:
-        HAPLogInfo(&logObject, "IPv6 Lost");
+        HAPLogInfo(&logObject, "IPv6 lost");
         break;
     case SL_NETAPP_EVENT_NO_IPV4_COLLISION_DETECTED:
-        HAPLogInfo(&logObject, "No IPv4 Collision Detected");
+        HAPLogInfo(&logObject, "No IPv4 collision detected");
         break;
     case SL_NETAPP_EVENT_NO_LOCAL_IPV6_COLLISION_DETECTED:
-        HAPLogInfo(&logObject, "No Local IPv6 Collision Detected");
+        HAPLogInfo(&logObject, "No local IPv6 collision detected");
         break;
     case SL_NETAPP_EVENT_NO_GLOBAL_IPV6_COLLISION_DETECTED:
-        HAPLogInfo(&logObject, "No Global IPv6 Collision Detected");
+        HAPLogInfo(&logObject, "No global IPv6 collision detected");
         break;
     default:
         // Receiving spurious events with ID 0x10187B; SL_OPCODE_NETAPP_RECEIVE?
-        HAPLogInfo(&logObject, "Unknown Event (0x%lX)", pSlNetAppEvent->Id);
+        HAPLogInfo(&logObject, "Unknown event (0x%lX)", pSlNetAppEvent->Id);
         break;
     }
 }
@@ -192,7 +204,7 @@ void SimpleLinkWlanEventHandler(SlWlanEvent_t *pSlWlanEvent)
         break;
     case SL_WLAN_EVENT_STA_ADDED:
         // Client connected in AP mode.
-        HAPLogInfo(&logObject, "STA Added (%02X:%02X:%02X:%02X:%02X:%02X)",
+        HAPLogInfo(&logObject, "STA added (%02X:%02X:%02X:%02X:%02X:%02X)",
                    (unsigned short)pSlWlanEvent->Data.STAAdded.Mac[0],
                    (unsigned short)pSlWlanEvent->Data.STAAdded.Mac[1],
                    (unsigned short)pSlWlanEvent->Data.STAAdded.Mac[2],
@@ -202,7 +214,7 @@ void SimpleLinkWlanEventHandler(SlWlanEvent_t *pSlWlanEvent)
         break;
     case SL_WLAN_EVENT_STA_REMOVED:
         // Client disconnected in AP mode.
-        HAPLogInfo(&logObject, "STA Removed (%02X:%02X:%02X:%02X:%02X:%02X)",
+        HAPLogInfo(&logObject, "STA removed (%02X:%02X:%02X:%02X:%02X:%02X)",
                    (unsigned short)pSlWlanEvent->Data.STARemoved.Mac[0],
                    (unsigned short)pSlWlanEvent->Data.STARemoved.Mac[1],
                    (unsigned short)pSlWlanEvent->Data.STARemoved.Mac[2],
@@ -211,28 +223,28 @@ void SimpleLinkWlanEventHandler(SlWlanEvent_t *pSlWlanEvent)
                    (unsigned short)pSlWlanEvent->Data.STARemoved.Mac[5]);
         break;
     case SL_WLAN_EVENT_P2P_CONNECT:
-        HAPLogInfo(&logObject, "P2P Connect");
+        HAPLogInfo(&logObject, "P2P connect");
         break;
     case SL_WLAN_EVENT_P2P_DISCONNECT:
-        HAPLogInfo(&logObject, "P2P Disconnect");
+        HAPLogInfo(&logObject, "P2P disconnect");
         break;
     case SL_WLAN_EVENT_P2P_CLIENT_ADDED:
-        HAPLogInfo(&logObject, "P2P Client Added");
+        HAPLogInfo(&logObject, "P2P client added");
         break;
     case SL_WLAN_EVENT_P2P_CLIENT_REMOVED:
-        HAPLogInfo(&logObject, "P2P Client Removed");
+        HAPLogInfo(&logObject, "P2P client removed");
         break;
     case SL_WLAN_EVENT_P2P_DEVFOUND:
-        HAPLogInfo(&logObject, "P2P Device Found");
+        HAPLogInfo(&logObject, "P2P device found");
         break;
     case SL_WLAN_EVENT_P2P_REQUEST:
-        HAPLogInfo(&logObject, "P2P Request");
+        HAPLogInfo(&logObject, "P2P request");
         break;
     case SL_WLAN_EVENT_P2P_CONNECTFAIL:
-        HAPLogInfo(&logObject, "P2P Connect Fail");
+        HAPLogInfo(&logObject, "P2P connect failed");
         break;
     case SL_WLAN_EVENT_RXFILTER:
-        HAPLogInfo(&logObject, "RX Filter");
+        HAPLogInfo(&logObject, "RX filter");
         break;
     case SL_WLAN_EVENT_PROVISIONING_STATUS:
         switch (pSlWlanEvent->Data.ProvisioningStatus.ProvisioningStatus) {
@@ -255,22 +267,22 @@ void SimpleLinkWlanEventHandler(SlWlanEvent_t *pSlWlanEvent)
         case SL_WLAN_PROVISIONING_CONFIRMATION_IP_ACQUIRED:
         case SL_WLAN_PROVISIONING_EXTERNAL_CONFIGURATION_READY:
         default:
-            HAPLogInfo(&logObject, "Provisioning Status ID 0x%02X",
+            HAPLogInfo(&logObject, "Provisioning status (0x%02X)",
                        (unsigned short)pSlWlanEvent->Data.ProvisioningStatus.ProvisioningStatus);
             break;
         }
         break;
     case SL_WLAN_EVENT_PROVISIONING_PROFILE_ADDED:
         pSlWlanEvent->Data.ProvisioningProfileAdded.Ssid[pSlWlanEvent->Data.ProvisioningProfileAdded.SsidLen] = '\0';
-        HAPLogInfo(&logObject, "Provisioning Profile Added (SSID=%s)",
+        HAPLogInfo(&logObject, "Provisioning profile added (SSID=%s)",
                    pSlWlanEvent->Data.ProvisioningProfileAdded.Ssid);
         break;
     case SL_WLAN_EVENT_LINK_QUALITY_TRIGGER:
-        HAPLogInfo(&logObject, "Link Quality Trigger (RSSI=%u)",
+        HAPLogInfo(&logObject, "Link quality trigger (RSSI=%u)",
                    (unsigned short)pSlWlanEvent->Data.LinkQualityTrigger.Data);
         break;
     default:
-        HAPLogInfo(&logObject, "Unknown Event (0x%lX)", pSlWlanEvent->Id);
+        HAPLogInfo(&logObject, "Unknown event (0x%lX)", pSlWlanEvent->Id);
         break;
     }
 }
@@ -281,14 +293,14 @@ void SimpleLinkSockEventHandler(SlSockEvent_t *pSlSockEvent)
 
     switch (pSlSockEvent->Event) {
     case SL_SOCKET_TX_FAILED_EVENT:
-        HAPLogInfo(&logObject, "TX Failed (%d)",
+        HAPLogInfo(&logObject, "TX failed (%d)",
                    pSlSockEvent->SocketAsyncEvent.SockTxFailData.Status);
         break;
     case SL_SOCKET_ASYNC_EVENT:
-        HAPLogInfo(&logObject, "Async Event");
+        HAPLogInfo(&logObject, "Async event");
         break;
     default:
-        HAPLogInfo(&logObject, "Unknown Event (0x%lX)", pSlSockEvent->Event);
+        HAPLogInfo(&logObject, "Unknown event (0x%lX)", pSlSockEvent->Event);
         break;
     }
 }
