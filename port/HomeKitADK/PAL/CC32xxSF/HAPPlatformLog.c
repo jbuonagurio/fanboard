@@ -16,6 +16,8 @@
 #include "HAP.h"
 #include "HAPPlatformLog+Init.h"
 
+#define kRTT_LogChannel ((unsigned int) 0)
+
 // Link to XSI-compliant version of 'strerror_r' ('__xpg_strerror_r').
 int __xpg_strerror_r(int, char *, size_t);
 
@@ -80,59 +82,59 @@ void HAPPlatformLogCapture(
     // Color.
     switch (type) {
         case kHAPLogType_Debug: {
-            SEGGER_RTT_printf(0, RTT_CTRL_RESET);
+            (void) SEGGER_RTT_printf(kRTT_LogChannel, RTT_CTRL_RESET);
         } break;
         case kHAPLogType_Info: {
-            SEGGER_RTT_printf(0, RTT_CTRL_TEXT_BRIGHT_GREEN);
+            (void) SEGGER_RTT_printf(kRTT_LogChannel, RTT_CTRL_TEXT_BRIGHT_GREEN);
         } break;
         case kHAPLogType_Default: {
-            SEGGER_RTT_printf(0, RTT_CTRL_TEXT_BRIGHT_MAGENTA);
+            (void) SEGGER_RTT_printf(kRTT_LogChannel, RTT_CTRL_TEXT_BRIGHT_MAGENTA);
         } break;
         case kHAPLogType_Error: {
-            SEGGER_RTT_printf(0, RTT_CTRL_TEXT_BRIGHT_RED);
+            (void) SEGGER_RTT_printf(kRTT_LogChannel, RTT_CTRL_TEXT_BRIGHT_RED);
         } break;
         case kHAPLogType_Fault: {
-            SEGGER_RTT_printf(0, RTT_CTRL_TEXT_BRIGHT_RED);
+            (void) SEGGER_RTT_printf(kRTT_LogChannel, RTT_CTRL_TEXT_BRIGHT_RED);
         } break;
     }
 
     // Time.
     HAPTime now = HAPPlatformClockGetCurrent();
-    (void) SEGGER_RTT_printf(0, "%8llu.%03llu", (unsigned long long) (now / HAPSecond), (unsigned long long) (now % HAPSecond));
-    (void) SEGGER_RTT_printf(0, "\t");
+    (void) SEGGER_RTT_printf(kRTT_LogChannel, "%8llu.%03llu", (unsigned long long) (now / HAPSecond), (unsigned long long) (now % HAPSecond));
+    (void) SEGGER_RTT_printf(kRTT_LogChannel, "\t");
 
     // Type.
     switch (type) {
         case kHAPLogType_Debug:
-            (void) SEGGER_RTT_printf(0, "Debug");
+            (void) SEGGER_RTT_printf(kRTT_LogChannel, "Debug");
             break;
         case kHAPLogType_Info:
-            (void) SEGGER_RTT_printf(0, "Info");
+            (void) SEGGER_RTT_printf(kRTT_LogChannel, "Info");
             break;
         case kHAPLogType_Default:
-            (void) SEGGER_RTT_printf(0, "Default");
+            (void) SEGGER_RTT_printf(kRTT_LogChannel, "Default");
             break;
         case kHAPLogType_Error:
-            (void) SEGGER_RTT_printf(0, "Error");
+            (void) SEGGER_RTT_printf(kRTT_LogChannel, "Error");
             break;
         case kHAPLogType_Fault:
-            (void) SEGGER_RTT_printf(0, "Fault");
+            (void) SEGGER_RTT_printf(kRTT_LogChannel, "Fault");
             break;
     }
-    (void) SEGGER_RTT_printf(0, "\t");
+    (void) SEGGER_RTT_printf(kRTT_LogChannel, "\t");
 
     // Subsystem / Category.
     if (log->subsystem) {
-        (void) SEGGER_RTT_printf(0, "[%s", log->subsystem);
+        (void) SEGGER_RTT_printf(kRTT_LogChannel, "[%s", log->subsystem);
         if (log->category) {
-            (void) SEGGER_RTT_printf(0, ":%s", log->category);
+            (void) SEGGER_RTT_printf(kRTT_LogChannel, ":%s", log->category);
         }
-        (void) SEGGER_RTT_printf(0, "] ");
+        (void) SEGGER_RTT_printf(kRTT_LogChannel, "] ");
     }
 
     // Message.
-    (void) SEGGER_RTT_printf(0, "%s", message);
-    (void) SEGGER_RTT_printf(0, "\n");
+    (void) SEGGER_RTT_printf(kRTT_LogChannel, "%s", message);
+    (void) SEGGER_RTT_printf(kRTT_LogChannel, "\n");
 
     // Buffer.
     if (bufferBytes) {
@@ -140,37 +142,37 @@ void HAPPlatformLogCapture(
         const uint8_t* b = bufferBytes;
         size_t length = numBufferBytes;
         if (length == 0) {
-            (void) SEGGER_RTT_printf(0, "\n");
+            (void) SEGGER_RTT_printf(kRTT_LogChannel, "\n");
         } else {
             i = 0;
             do {
-                (void) SEGGER_RTT_printf(0, "    %04zx ", i);
+                (void) SEGGER_RTT_printf(kRTT_LogChannel, "    %04zx ", i);
                 for (n = 0; n != 8 * 4; n++) {
                     if (n % 4 == 0) {
-                        (void) SEGGER_RTT_printf(0, " ");
+                        (void) SEGGER_RTT_printf(kRTT_LogChannel, " ");
                     }
                     if ((n <= length) && (i < length - n)) {
-                        (void) SEGGER_RTT_printf(0, "%02x", b[i + n] & 0xff);
+                        (void) SEGGER_RTT_printf(kRTT_LogChannel, "%02x", b[i + n] & 0xff);
                     } else {
-                        (void) SEGGER_RTT_printf(0, "  ");
+                        (void) SEGGER_RTT_printf(kRTT_LogChannel, "  ");
                     }
                 };
-                (void) SEGGER_RTT_printf(0, "    ");
+                (void) SEGGER_RTT_printf(kRTT_LogChannel, "    ");
                 for (n = 0; n != 8 * 4; n++) {
                     if (i != length) {
                         if ((32 <= b[i]) && (b[i] < 127)) {
-                            (void) SEGGER_RTT_printf(0, "%c", b[i]);
+                            (void) SEGGER_RTT_printf(kRTT_LogChannel, "%c", b[i]);
                         } else {
-                            (void) SEGGER_RTT_printf(0, ".");
+                            (void) SEGGER_RTT_printf(kRTT_LogChannel, ".");
                         }
                         i++;
                     }
                 }
-                (void) SEGGER_RTT_printf(0, "\n");
+                (void) SEGGER_RTT_printf(kRTT_LogChannel, "\n");
             } while (i != length);
         }
     }
 
     // Reset color.
-    SEGGER_RTT_printf(0, RTT_CTRL_RESET);
+    SEGGER_RTT_printf(kRTT_LogChannel, RTT_CTRL_RESET);
 }
