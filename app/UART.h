@@ -18,7 +18,7 @@ extern QueueHandle_t rxMessageQueue;
 extern QueueHandle_t txMessageQueue;
 
 void UARTTask(void *pvParameters);
-void UARTSendMessage(uint8_t opcode, uint16_t payloadSize, void *payload);
+void EnqueueMessage(uint8_t opcode, uint16_t payloadSize, void *payload);
 void SendFanControlCommand(uint16_t value);
 void SendLightControlCommand(uint16_t value);
 

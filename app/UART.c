@@ -57,7 +57,7 @@ HAP_ENUM_BEGIN(uint8_t, MessageStatus) {
     kMessageStatus_InvalidCRC
 } HAP_ENUM_END(uint8_t, MessageStatus);
 
-// UART device handle.
+// Device handles.
 static UART_Handle uartHandle = NULL;
 
 // FreeRTOS task handle.
@@ -128,35 +128,35 @@ static void ProcessIncomingMessages()
         switch (message.header.opcode) {
         case 0x00: // Initialization 1 (0x04) response; send Initialization 2 (0x12)
             initFlags |= 0b000000001;
-            UARTSendMessage(0x12, 1, &(uint8_t[1]){ 0x01 });
+            EnqueueMessage(0x12, 1, &(uint8_t[1]){ 0x01 });
             break;
         case 0x13: // Initialization 2 (0x12) response; send Initialization 3 (0x30)
             initFlags |= 0b000000010;
-            UARTSendMessage(0x30, 0, NULL);
+            EnqueueMessage(0x30, 0, NULL);
             break;
         case 0x31: // Initialization 3 (0x30) response; send Initialization 4 (0x21)
             initFlags |= 0b000000100;
-            UARTSendMessage(0x21, 1, &(uint8_t[1]){ 0x01 });
+            EnqueueMessage(0x21, 1, &(uint8_t[1]){ 0x01 });
             break;
         case 0x22: // Initialization 4 (0x21) response; send Initialization 5 (0x36)
             initFlags |= 0b000001000;
-            UARTSendMessage(0x36, 1, &(uint8_t[1]){ 0x01 });
+            EnqueueMessage(0x36, 1, &(uint8_t[1]){ 0x01 });
             break;
         case 0x37: // Initialization 5 (0x36) response; send Initialization 6 (0x53)
             initFlags |= 0b000010000;
-            UARTSendMessage(0x53, 0, NULL);
+            EnqueueMessage(0x53, 0, NULL);
             break;
         case 0x54: // Initialization 6 (0x53) response; send Initialization 7 (0x55)
             initFlags |= 0b000100000;
-            UARTSendMessage(0x55, 0, NULL);
+            EnqueueMessage(0x55, 0, NULL);
             break;
         case 0x56: // Initialization 7 (0x55) response; send Initialization 8 (0x63)
             initFlags |= 0b001000000;
-            UARTSendMessage(0x63, 0, NULL);
+            EnqueueMessage(0x63, 0, NULL);
             break;
         case 0x64: // Initialization 8 (0x63) response; send Initialization 9 (0x57)
             initFlags |= 0b010000000;
-            UARTSendMessage(0x57, 1, &(uint8_t[1]){ 0x00 });
+            EnqueueMessage(0x57, 1, &(uint8_t[1]){ 0x00 });
             break;
         case 0x59: // Initialization 9 (0x57) response
             initFlags |= 0b100000000;
@@ -289,13 +289,13 @@ void UARTTask(void *pvParameters)
 
     rxMessageQueue = xQueueCreate(kUART_RXQueueDepth, sizeof(Message_t));
     if (rxMessageQueue == NULL) {
-        HAPLogError(&kHAPLog_Default, "Failed to create RX message queue.");
+        HAPLogFault(&kHAPLog_Default, "Failed to create RX message queue.");
         HAPFatalError();
     }
 
     txMessageQueue = xQueueCreate(kUART_TXQueueDepth, sizeof(Message_t));
     if (txMessageQueue == NULL) {
-        HAPLogError(&kHAPLog_Default, "Failed to create TX message queue.");
+        HAPLogFault(&kHAPLog_Default, "Failed to create TX message queue.");
         HAPFatalError();
     }
 
@@ -339,7 +339,7 @@ void UARTTask(void *pvParameters)
     FlushBuffers(uartHandle);
 
     // Start the initialization sequence.
-    UARTSendMessage(0x04, 0, NULL);
+    EnqueueMessage(0x04, 0, NULL);
 
     for (;;) {
         // Send the next message in the TX queue, if present.
@@ -389,7 +389,7 @@ void UARTTask(void *pvParameters)
 }
 
 // Post a message to the TX queue. Don't block if the queue is full.
-void UARTSendMessage(uint8_t opcode, uint16_t payloadSize, void *payload)
+void EnqueueMessage(uint8_t opcode, uint16_t payloadSize, void *payload)
 {
     HAPAssert(payloadSize <= kUART_MaxPayloadSize);
     HAPAssert(IsTXOpcodeValid(opcode));
@@ -417,11 +417,11 @@ void UARTSendMessage(uint8_t opcode, uint16_t payloadSize, void *payload)
 void SendFanControlCommand(uint16_t value)
 {
     FanControlTXPayload payload = { .value = value };
-    UARTSendMessage(0x50, sizeof(payload), &payload);
+    EnqueueMessage(0x50, sizeof(payload), &payload);
 }
 
 void SendLightControlCommand(uint16_t value)
 {
     LightControlTXPayload payload = { .value = value };
-    UARTSendMessage(0x60, sizeof(payload), &payload);
+    EnqueueMessage(0x60, sizeof(payload), &payload);
 }
