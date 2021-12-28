@@ -17,7 +17,7 @@
             "showDevDebugOutput": false,
             "svdFile": "${workspaceRoot}/svd/CC32xxSF.svd",
             "rttConfig": {
-                "enabled": true,
+                "enabled": false,
                 "address": "auto",
                 "decoders": [
                     {
@@ -27,7 +27,10 @@
                         "clear": false
                     }
                 ]
-            }
+            },
+            "preLaunchCommands": [
+                "monitor speed 50000"
+            ]
         },
         {
             // OpenOCD with XDS110
