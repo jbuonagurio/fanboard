@@ -11,15 +11,14 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/arm-gcc-toolchain.cmake")
 endif()
 
-project(fanboard)
-
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-
- # TI POSIX compatibility headers require -std=c11, not -std=gnu11
-set(CMAKE_C_EXTENSIONS OFF)
+project(fanboard LANGUAGES C ASM)
 
 set(CMAKE_EXECUTABLE_SUFFIX ".elf")
+
+# TI POSIX compatibility headers require -std=c11, not -std=gnu11.
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
 #----------------------------------------------------------------------
 # Project Configuration Options
@@ -28,32 +27,11 @@ set(CMAKE_EXECUTABLE_SUFFIX ".elf")
 set(SIMPLELINK_CC32XX_SDK_DIR "" CACHE PATH "Path to SimpleLink CC32xx SDK")
 set(FREERTOS_DIR "${PROJECT_SOURCE_DIR}/external/FreeRTOS-Kernel" CACHE PATH "Path to FreeRTOS Kernel")
 set(HOMEKIT_ADK_DIR "${PROJECT_SOURCE_DIR}/external/HomeKitADK" CACHE PATH "Path to HomeKit ADK")
-set(SEGGER_RTT_DIR "${PROJECT_SOURCE_DIR}/external/SEGGER_RTT" CACHE PATH "Path to SEGGER RTT")
+set(SEGGER_DIR "${PROJECT_SOURCE_DIR}/external/SEGGER" CACHE PATH "Path to SEGGER RTT and SystemView")
 set(MBEDTLS_DIR "${PROJECT_SOURCE_DIR}/external/mbedtls" CACHE PATH "Path to Mbed TLS")
 
-# Platform Configuration
-
-set(PLATFORM_FLAGS -mcpu=cortex-m4+nofp -mfloat-abi=soft -mthumb --specs=nano.specs)
 set(LINKER_SCRIPT "${PROJECT_SOURCE_DIR}/linker/cc32xxsf_freertos.lds")
 set(STARTUP_FILE "${PROJECT_SOURCE_DIR}/startup/startup_cc32xx_gcc.c")
-
-# Global Compile Options:
-#
-# -ffunction-sections
-# -fdata-sections
-#     Place each function or data item into its own section in the
-#     output file. Used with linker `--gc-sections` option.
-# -ffreestanding
-#     Asserts that program startup is not necessarily at `main`.
-#     Implies `-fno-builtin`.
-# -fmerge-constants
-#     Attempt to merge identical constants (string constants and
-#     floating-point constants) across compilation units. 
-# -fstack-usage
-#     Generate an extra file that specifies the maximum amount of
-#     stack used, on a per-function basis.
-
-add_compile_options(${PLATFORM_FLAGS} -ffunction-sections -fdata-sections -ffreestanding -fmerge-constants -fstack-usage)
 
 #----------------------------------------------------------------------
 # Imported Targets
@@ -131,20 +109,35 @@ set_property(TARGET ti_utils_runtime PROPERTY INTERFACE_INCLUDE_DIRECTORIES
 # Target: SEGGER RTT
 #----------------------------------------------------------------------
 
-add_library(segger_rtt OBJECT
-    "${SEGGER_RTT_DIR}/RTT/SEGGER_RTT.c"
-    "${SEGGER_RTT_DIR}/RTT/SEGGER_RTT_printf.c"
-)
+add_library(segger_rtt
+    "${SEGGER_DIR}/RTT/SEGGER_RTT.c"
+    "${SEGGER_DIR}/RTT/SEGGER_RTT_printf.c")
 
-target_include_directories(segger_rtt PUBLIC "${SEGGER_RTT_DIR}/RTT")
-target_include_directories(segger_rtt PUBLIC "${SEGGER_RTT_DIR}/Config")
+target_include_directories(segger_rtt PUBLIC
+    "${SEGGER_DIR}/RTT"
+    "${SEGGER_DIR}/Config")
+
+target_compile_definitions(segger_rtt PUBLIC -DRTT_USE_ASM=0)
+
+#----------------------------------------------------------------------
+# Target: SEGGER SystemView
+#----------------------------------------------------------------------
+
+add_library(segger_sysview
+    "${SEGGER_DIR}/SYSVIEW/SEGGER_SYSVIEW.c")
+
+target_include_directories(segger_sysview PUBLIC
+    "${SEGGER_DIR}/SYSVIEW"
+    "${SEGGER_DIR}/Config")
+
+target_link_libraries(segger_sysview PUBLIC segger_rtt)
 
 #----------------------------------------------------------------------
 # Target: FreeRTOS
 #----------------------------------------------------------------------
 
-# Object library required for linking to pre-built TI archives.
-# Includes TI POSIX compability layer and DPL (Driver Porting Layer).
+# Object library must be used to link to pre-built TI archives.
+# Includes TI POSIX, DPL (Driver Porting Layer) and SEGGER SystemView.
 add_library(freertos OBJECT
     "${FREERTOS_DIR}/croutine.c"
     "${FREERTOS_DIR}/event_groups.c"
@@ -155,6 +148,10 @@ add_library(freertos OBJECT
     "${FREERTOS_DIR}/timers.c"
     "${FREERTOS_DIR}/portable/GCC/ARM_CM3/port.c"
     "${FREERTOS_DIR}/portable/MemMang/heap_4.c"
+    # SEGGER SystemView
+    "${SEGGER_DIR}/SYSVIEW/SEGGER_SYSVIEW_FreeRTOS.c"
+    "${PROJECT_SOURCE_DIR}/port/SEGGER/SYSVIEW/SEGGER_SYSVIEW_Config_FreeRTOS.c"
+    # TI POSIX
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/clock.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/memory.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/mqueue.c"
@@ -167,6 +164,7 @@ add_library(freertos OBJECT
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/semaphore.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/sleep.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/timer.c"
+    # TI DPL
     "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/AppHooks_freertos.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/ClockP_freertos.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/DebugP_freertos.c"
@@ -177,19 +175,16 @@ add_library(freertos OBJECT
     "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/SwiP_freertos.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/SystemP_freertos.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/HwiPCC32XX_freertos.c"
-    "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/PowerCC32XX_freertos.c"
-)
+    "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/PowerCC32XX_freertos.c")
 
 target_include_directories(freertos PUBLIC
     "${PROJECT_SOURCE_DIR}/port/FreeRTOS-Kernel/include"
     "${FREERTOS_DIR}/include"
     "${FREERTOS_DIR}/portable/GCC/ARM_CM3"
     "${SIMPLELINK_CC32XX_SDK_DIR}/source"
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/gcc"
-)
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/gcc")
 
-# SEGGER RTT is used for tracing; see FreeRTOSConfigTrace.h.
-target_link_libraries(freertos PUBLIC segger_rtt)
+target_link_libraries(freertos PUBLIC segger_sysview)
 
 #----------------------------------------------------------------------
 # Target: Mbed TLS
@@ -264,14 +259,13 @@ add_library(mbedcrypto
     "${MBEDTLS_DIR}/library/xtea.c"
 
     # Port
-    "${PROJECT_SOURCE_DIR}/port/mbedtls/library/entropy_poll.c"
-)
+    "${PROJECT_SOURCE_DIR}/port/mbedtls/library/entropy_poll.c")
 
 target_include_directories(mbedcrypto PUBLIC
     "${PROJECT_SOURCE_DIR}/port/mbedtls/include"
-    "${MBEDTLS_DIR}/include"
-)
+    "${MBEDTLS_DIR}/include")
 
+# For sl_NetUtilGet(SL_NETUTIL_TRUE_RANDOM).
 target_link_libraries(mbedcrypto PUBLIC ti_drivers_net_wifi)
 
 #----------------------------------------------------------------------
@@ -369,9 +363,8 @@ add_library(homekitadk
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformRandomNumber.c"
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformRunLoop.c"
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformServiceDiscovery.c"
-    "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformTCPStreamManager.c"
-    "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformTimer.c"
-)
+    "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformSyslog.c"
+    "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformTCPStreamManager.c")
 
 target_include_directories(homekitadk PUBLIC
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF"
@@ -379,19 +372,16 @@ target_include_directories(homekitadk PUBLIC
     "${HOMEKIT_ADK_DIR}/External/HTTP"
     "${HOMEKIT_ADK_DIR}/External/JSON"
     "${HOMEKIT_ADK_DIR}/PAL"
-    "${HOMEKIT_ADK_DIR}/HAP"
-)
+    "${HOMEKIT_ADK_DIR}/HAP")
 
 target_link_libraries(homekitadk PUBLIC
-    segger_rtt
     freertos
     ti_drivers_net_wifi
     ti_drivers
     ti_net_utils
     ti_net
     ti_devices_cc32xx_driverlib
-    mbedcrypto
-)
+    mbedcrypto)
 
 # HAP_LOG_LEVEL:
 # 0: kHAPPlatformLogEnabledTypes_None
@@ -402,11 +392,15 @@ target_link_libraries(homekitadk PUBLIC
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(homekitadk PUBLIC
         -DHAP_LOG_LEVEL=3
+        -DHAP_LOG_SENSITIVE=1
+        -DHAP_LOG_REMOTE=1
         -DHAP_DISABLE_ASSERTS=0
         -DHAP_DISABLE_PRECONDITIONS=0)
 else()
     target_compile_definitions(homekitadk PUBLIC
-        -DHAP_LOG_LEVEL=3
+        -DHAP_LOG_LEVEL=0
+        -DHAP_LOG_SENSITIVE=0
+        -DHAP_LOG_REMOTE=0
         -DHAP_DISABLE_ASSERTS=1
         -DHAP_DISABLE_PRECONDITIONS=1)
 endif()
@@ -422,22 +416,20 @@ target_sources(${PROJECT_NAME} PRIVATE
     "app/Event.c"
     "app/App.c"
     "app/DB.c"
+    "app/LED.c"
     "app/UART.c"
     "app/Utilities.c"
     "app/Main.c"
-    "${STARTUP_FILE}"
-)
+    "${STARTUP_FILE}")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    segger_rtt
     freertos
     ti_drivers_net_wifi
     ti_drivers
     ti_net_utils
     ti_net
     ti_devices_cc32xx_driverlib
-    homekitadk
-)
+    homekitadk)
 
 # __SF_DEBUG__ enables the .dbghdr section, which skips the integrity
 # check phase of booting and signals to the bootloader that it should
@@ -447,37 +439,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE -D__SF_DEBUG__)
 
-# Target Link Options:
-#
-# -nostartfiles
-#     Do not use the standard system startup files when linking.
-#     The standard system libraries are used normally, unless
-#     `-nostdlib`, `-nolibc`, or `-nodefaultlibs` is used.
-# --gcsections
-#     Enable garbage collection of unused input sections. Used with
-#     compiler `-fdata-sections` option.
-# --omagic
-#     Set the text and data sections to be readable and writable.
-#     Also, do not page-align the data segment, and disable linking
-#     against shared libraries.
-# --sort-section=alignment
-#     This option will apply "SORT_BY_ALIGNMENT" to all wildcard
-#     section patterns in the linker script.
-# --cref
-#     Output a cross reference table.
-# --print-memory-usage
-#     Print used size, total size and used size of memory regions
-#     created with the MEMORY command.
+target_link_options(${PROJECT_NAME} PRIVATE "LINKER:-Map=${PROJECT_NAME}.map")
+target_link_options(${PROJECT_NAME} PRIVATE "LINKER:-T,${LINKER_SCRIPT}")
 
-target_link_options(${PROJECT_NAME} PRIVATE ${PLATFORM_FLAGS} -nostartfiles -lg -lgcc -lc -lm)
-target_link_options(${PROJECT_NAME} PRIVATE "LINKER:--gc-sections,--omagic,--sort-section=alignment,--cref,--print-memory-usage")
-target_link_options(${PROJECT_NAME} PRIVATE "LINKER:-Map=${PROJECT_NAME}.map,-T,${LINKER_SCRIPT}")
-
-# Require rebuild on linker script change
+# Require rebuild on linker script change.
 set_target_properties(${PROJECT_NAME} PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
 
-# Generate binary and Intel Hex from ELF
+# Generate binary and Intel Hex from ELF.
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O binary "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}" "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.bin"
-    COMMAND ${CMAKE_OBJCOPY} -O ihex "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}" "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.hex"
-)
+    COMMAND ${CMAKE_OBJCOPY} -O ihex "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}" "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.hex")
