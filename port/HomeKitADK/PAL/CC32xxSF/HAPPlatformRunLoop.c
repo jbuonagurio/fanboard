@@ -1,38 +1,27 @@
 // Copyright (c) 2015-2019 The HomeKit ADK Contributors
 //
+// Copyright (c) 2020 Espressif Systems (Shanghai) PTE LTD
+//
 // Copyright (c) 2021 John Buonagurio
 //
 // Licensed under the Apache License, Version 2.0 (the “License”);
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of HomeKit ADK project authors.
-//
-// Copyright 2020 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 // This implementation is based on `select` for maximum portability but may be extended to also support
 // `poll`, `epoll` or `kqueue`.
 
-#include "HAPPlatform.h"
+#include <FreeRTOS.h> // pvPortMalloc
 
 #include <errno.h>
-#include <syslimits.h>
+#include <stdint.h>
 
 #include <ti/net/bsd/errnoutil.h>
 #include <ti/net/slneterr.h> 
 #include <ti/net/slnetsock.h>
 #include <ti/net/slnetutils.h>
 
+#include "HAPPlatform.h"
 #include "HAPPlatform+Init.h"
 #include "HAPPlatformFileHandle.h"
 #include "HAPPlatformLog+Init.h"
@@ -211,12 +200,13 @@ HAPError HAPPlatformFileHandleRegister(HAPPlatformFileHandleRef* fileHandle_,
     HAPPrecondition(fileHandle_);
 
     // Prepare fileHandle.
-    HAPPlatformFileHandle* fileHandle = calloc(1, sizeof(HAPPlatformFileHandle));
+    HAPPlatformFileHandle* fileHandle = pvPortMalloc(sizeof(HAPPlatformFileHandle));
     if (!fileHandle) {
         HAPLog(&logObject, "Cannot allocate more file handles.");
         *fileHandle_ = 0;
         return kHAPError_OutOfResources;
     }
+    HAPRawBufferZero(fileHandle, sizeof(HAPPlatformFileHandle));
     fileHandle->fileDescriptor = fileDescriptor;
     fileHandle->interests = interests;
     fileHandle->callback = callback;
@@ -306,21 +296,22 @@ static void ProcessSelectedFileHandles(SlNetSock_SdSet_t* readFileDescriptors,
 }
 
 HAP_RESULT_USE_CHECK
-HAPError HAPPlatformTimerRegister(
-        HAPPlatformTimerRef* timer_,
-        HAPTime deadline,
-        HAPPlatformTimerCallback callback,
-        void* _Nullable context) {
+HAPError HAPPlatformTimerRegister(HAPPlatformTimerRef* timer_,
+                                  HAPTime deadline,
+                                  HAPPlatformTimerCallback callback,
+                                  void* _Nullable context)
+{
     HAPPrecondition(timer_);
     HAPPlatformTimer* _Nullable* newTimer = (HAPPlatformTimer * _Nullable*) timer_;
     HAPPrecondition(callback);
 
     // Prepare timer.
-    *newTimer = calloc(1, sizeof(HAPPlatformTimer));
+    *newTimer = pvPortMalloc(sizeof(HAPPlatformTimer));
     if (!*newTimer) {
         HAPLog(&logObject, "Cannot allocate more timers.");
         return kHAPError_OutOfResources;
     }
+    HAPRawBufferZero(*newTimer, sizeof(HAPPlatformTimer));
     (*newTimer)->deadline = deadline ? deadline : 1;
     (*newTimer)->callback = callback;
     (*newTimer)->context = context;
@@ -483,6 +474,7 @@ void HAPPlatformRunLoopCreate(const HAPPlatformRunLoopOptions* options)
     HAPPrecondition(runLoop.loopbackFileDescriptor == -1);
     int sd = (int)SlNetSock_create(SLNETSOCK_AF_INET, SLNETSOCK_SOCK_DGRAM, SLNETSOCK_PROTO_UDP, 0, 0);
     if (sd < 0) {
+        ErrnoUtil_set(sd);
         HAPPlatformLogPOSIXError(kHAPLogType_Error,
                                  "Loopback creation failed (log, call 'socket').",
                                  errno, __func__, HAP_FILE, __LINE__);
