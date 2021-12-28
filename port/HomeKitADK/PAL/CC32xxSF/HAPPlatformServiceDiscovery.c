@@ -6,7 +6,7 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of HomeKit ADK project authors.
 
-#include <limits.h>
+#include <stdint.h>
 
 #include <ti/drivers/net/wifi/simplelink.h>
 
@@ -28,7 +28,7 @@ void HAPPlatformServiceDiscoveryCreate(HAPPlatformServiceDiscoveryRef serviceDis
 
     int e = sl_NetAppStart(SL_NETAPP_MDNS_ID);
     if (e < 0 && e != SL_ERROR_NET_APP_MDNS_ALREADY_STARTED) {
-        HAPLogError(&logObject, "Failed to start the mDNS service: %d.", e);
+        HAPLogFault(&logObject, "Failed to start the mDNS service: %d.", e);
         HAPFatalError();
     }
 }
@@ -117,7 +117,7 @@ void HAPPlatformServiceDiscoveryRegister(HAPPlatformServiceDiscoveryRef serviceD
                                          kHAPPlatformServiceDiscovery_TTL,
                                          options);
     if (e < 0) {
-        HAPLogError(&logObject, "Failed to register the mDNS service: %d.", e);
+        HAPLogFault(&logObject, "Failed to register the mDNS service: %d.", e);
         HAPFatalError();
     }
     
