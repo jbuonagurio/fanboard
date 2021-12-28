@@ -127,8 +127,6 @@ static void ToggleFanActive(void)
     default:
         break;
     }
-    
-    HAPLogInfo(&kHAPLog_Default, "%s: %d", __func__, accessoryConfiguration.state.active);
 
     SaveAccessoryState();
     HAPAccessoryServerRaiseEvent(accessoryConfiguration.server, &fanActiveCharacteristic, &fanService, &accessory);
@@ -153,8 +151,6 @@ static void ToggleLightBulbState(void)
     else {
         SendLightControlCommand(0x0000);
     }
-
-    HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, accessoryConfiguration.state.lightBulbOn ? "true" : "false");
 
     SaveAccessoryState();
     HAPAccessoryServerRaiseEvent(accessoryConfiguration.server, &fanActiveCharacteristic, &fanService, &accessory);
@@ -230,7 +226,6 @@ HAPError HandleFanActiveRead(HAPAccessoryServerRef* server HAP_UNUSED,
                              uint8_t* value,
                              void* _Nullable context HAP_UNUSED)
 {
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
     *value = accessoryConfiguration.state.active;
     switch (*value) {
         case kHAPCharacteristicValue_Active_Inactive: {
@@ -249,7 +244,6 @@ HAPError HandleFanActiveWrite(HAPAccessoryServerRef* server,
                               uint8_t value,
                               void* _Nullable context HAP_UNUSED)
 {
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
     HAPCharacteristicValue_Active active = (HAPCharacteristicValue_Active) value;
     switch (active) {
         case kHAPCharacteristicValue_Active_Inactive: {
@@ -302,7 +296,6 @@ HAPError HandleFanRotationDirectionRead(HAPAccessoryServerRef* server HAP_UNUSED
                                         int32_t* value,
                                         void* _Nullable context HAP_UNUSED)
 {
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
     *value = accessoryConfiguration.state.fanRotationDirection;
     switch (*value) {
         case kHAPCharacteristicValue_RotationDirection_Clockwise: {
@@ -321,7 +314,6 @@ HAPError HandleFanRotationDirectionWrite(HAPAccessoryServerRef* server,
                                          int32_t value,
                                          void* _Nullable context HAP_UNUSED)
 {
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
     HAPCharacteristicValue_RotationDirection fanRotationDirection = (HAPCharacteristicValue_RotationDirection) value;
     switch (fanRotationDirection) {
         case kHAPCharacteristicValue_RotationDirection_Clockwise: {
@@ -388,7 +380,7 @@ HAPError HandleLightBulbBrightnessWrite(HAPAccessoryServerRef *server,
     HAPLogInfo(&kHAPLog_Default, "%s: %d", __func__, (int)(value));
     if (accessoryConfiguration.state.lightBulbBrightness != value) {
         accessoryConfiguration.state.lightBulbBrightness = value;
-        // Set brightness
+        // Set brightness.
         SaveAccessoryState();
         HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
     }
@@ -418,11 +410,12 @@ void AppCreate(HAPAccessoryServerRef *server, HAPPlatformKeyValueStoreRef keyVal
 
 void AppRelease(void)
 {
+    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
+    // Not Implemented
 }
 
 void AppAccessoryServerStart(void)
 {
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
     HAPAccessoryServerStart(accessoryConfiguration.server, &accessory);
 }
 
@@ -431,7 +424,6 @@ void AccessoryServerHandleUpdatedState(HAPAccessoryServerRef *server, void *_Nul
     HAPPrecondition(server);
     HAPPrecondition(!context);
 
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
     switch (HAPAccessoryServerGetState(server)) {
     case kHAPAccessoryServerState_Idle: {
         HAPLogInfo(&kHAPLog_Default, "Accessory Server State did update: Idle.");
@@ -459,9 +451,7 @@ void AppInitialize(HAPAccessoryServerOptions *serverOptions HAP_UNUSED,
                    HAPAccessoryServerCallbacks *serverCallbacks HAP_UNUSED)
 {
     HAPLogInfo(&kHAPLog_Default, "%s", __func__);
-    
-    // Start the initialization sequence for the fan.
-    //UARTSendMessage(0x04, 0, NULL);
+    // Not Implemented
 }
 
 void AppDeinitialize()
