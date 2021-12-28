@@ -494,7 +494,7 @@ const uint_least8_t Watchdog_count = BOARD_WATCHDOGCOUNT;
 //--------------------------------------------------------------------
 
 // Perform any board-specific initialization needed at startup.
-void InitializeBoard(void)
+void Board_init(void)
 {
     PRCMCC3200MCUInit();
     Power_init();

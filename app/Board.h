@@ -64,7 +64,10 @@ typedef enum BOARD_WatchdogName {
     BOARD_WATCHDOGCOUNT
 } BOARD_WatchdogName;
 
-void InitializeBoard(void);
+#define BOARD_YELLOW_LED BOARD_LED0
+#define BOARD_BLUE_LED BOARD_LED1
+
+void Board_init(void);
 
 #ifdef __cplusplus
 }
