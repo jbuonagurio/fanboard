@@ -21,7 +21,7 @@
 #include <mbedtls/entropy.h>
 #include <mbedtls/entropy_poll.h>
 
-#include <ti/drivers/net/wifi/simplelink.h>
+#include <ti/drivers/net/wifi/netutil.h>
 
 /*
  * Use the SimpleLink Host Driver for hardware-derived PRNG entropy.
