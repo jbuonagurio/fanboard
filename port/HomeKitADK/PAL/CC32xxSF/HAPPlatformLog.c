@@ -8,13 +8,12 @@
 
 #include <errno.h>
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include <SEGGER_RTT.h>
 
 #include "HAP.h"
 #include "HAPPlatformLog+Init.h"
+#include "HAPPlatformSyslog+Init.h"
 
 #define kRTT_LogChannel ((unsigned int) 0)
 
@@ -78,8 +77,9 @@ void HAPPlatformLogCapture(
         HAPLogType type,
         const char* message,
         const void* _Nullable bufferBytes,
-        size_t numBufferBytes) HAP_DIAGNOSE_ERROR(!bufferBytes && numBufferBytes, "empty buffer cannot have a length") {
-    // Color.
+        size_t numBufferBytes) HAP_DIAGNOSE_ERROR(!bufferBytes && numBufferBytes, "empty buffer cannot have a length")
+{
+    // ANSI Color.
     switch (type) {
         case kHAPLogType_Debug: {
             (void) SEGGER_RTT_printf(kRTT_LogChannel, RTT_CTRL_RESET);
@@ -94,7 +94,7 @@ void HAPPlatformLogCapture(
             (void) SEGGER_RTT_printf(kRTT_LogChannel, RTT_CTRL_TEXT_BRIGHT_RED);
         } break;
         case kHAPLogType_Fault: {
-            (void) SEGGER_RTT_printf(kRTT_LogChannel, RTT_CTRL_TEXT_BRIGHT_RED);
+            (void) SEGGER_RTT_printf(kRTT_LogChannel, RTT_CTRL_TEXT_BRIGHT_WHITE RTT_CTRL_BG_RED);
         } break;
     }
 
@@ -175,4 +175,11 @@ void HAPPlatformLogCapture(
 
     // Reset color.
     SEGGER_RTT_printf(kRTT_LogChannel, RTT_CTRL_RESET);
+
+#if HAP_LOG_REMOTE
+    // Must not be called when J-Link might also do RTT.
+    static char rttBuffer[1024];
+    unsigned n = SEGGER_RTT_ReadUpBuffer(0, rttBuffer, sizeof rttBuffer);
+    HAPPlatformSyslogWrite(rttBuffer, n, NULL);
+#endif
 }
