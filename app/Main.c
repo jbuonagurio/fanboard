@@ -22,12 +22,12 @@
 #include <HAPPlatformMFiTokenAuth+Init.h>
 #include <HAPPlatformRunLoop+Init.h>
 #include <HAPPlatformServiceDiscovery+Init.h>
+#include <HAPPlatformSyslog+Init.h>
 #include <HAPPlatformTCPStreamManager+Init.h>
-#include <HAPPlatformTimer+Init.h>
 
+#include <ti/drivers/apps/LED.h>
 #include <ti/drivers/net/wifi/simplelink.h>
 #include <ti/drivers/net/wifi/slnetifwifi.h>
-#include <ti/drivers/apps/LED.h>
 
 #include <FreeRTOS.h>
 #include <semphr.h>
@@ -98,7 +98,7 @@ static void StartNetworkProcessor()
                                 kApp_HostTaskPriority,    // uxPriority
                                 &hostTaskHandle);         // pxCreatedTask
     if (rc != pdPASS) { 
-        HAPLogError(&kHAPLog_Default, "Failed to create SimpleLink host driver task.");
+        HAPLogFault(&kHAPLog_Default, "Failed to create SimpleLink host driver task.");
         HAPFatalError();
     }
 
@@ -112,7 +112,7 @@ static void StartNetworkProcessor()
     // set before the callback is executed.
     int16_t mode = sl_Start(NULL, NULL, NULL);
     if (mode < 0) {
-        HAPLogError(&kHAPLog_Default, "Failed to start the NWP: %d.", mode);
+        HAPLogFault(&kHAPLog_Default, "Failed to start the NWP: %d.", mode);
         HAPFatalError();
     }
 }
@@ -121,57 +121,42 @@ static void StartNetworkProcessor()
 static void StopNetworkProcessor()
 {
     HAPLogInfo(&kHAPLog_Default, "Stopping NWP.");
-
     sl_Stop(kSimpleLink_StopTimeout);
 }
 
 // Initialize global platform objects.
 static void InitializePlatform()
 {
-    // Timers.
-    //HAPPlatformTimerCreate();
+    // Syslog.
+    HAPPlatformSyslogInitialize(
+        &(const HAPPlatformSyslogOptions){ .ip = SYSLOG_IP, .port = SYSLOG_PORT });
 
     // Service discovery.
-    HAPLogDebug(&kHAPLog_Default, "HAPPlatformServiceDiscoveryCreate");
     HAPPlatformServiceDiscoveryCreate(&serviceDiscovery);
     platform.hapPlatform.ip.serviceDiscovery = &serviceDiscovery;
 
-    // Key-value store.
-    HAPLogDebug(&kHAPLog_Default, "HAPPlatformKeyValueStoreCreate");    
+    // Key-value store.  
     HAPPlatformKeyValueStoreCreate(&platform.keyValueStore,
         &(const HAPPlatformKeyValueStoreOptions){ .rootDirectory = ".homekitstore" });
     platform.hapPlatform.keyValueStore = &platform.keyValueStore;
 
-    // RAM-based key-value store.
-    //static HAPPlatformKeyValueStoreItem keyValueStoreItems[40];
-    //HAPPlatformKeyValueStoreCreate(&platform.keyValueStore,
-    //    &(const HAPPlatformKeyValueStoreOptions){ .items = keyValueStoreItems, .numItems = 40 });
-    //platform.hapPlatform.keyValueStore = &platform.keyValueStore;
-
     // Accessory setup manager. Depends on key-value store.
-    HAPLogDebug(&kHAPLog_Default, "HAPPlatformAccessorySetupCreate");
     HAPPlatformAccessorySetupCreate(
-        &accessorySetup, &(const HAPPlatformAccessorySetupOptions){.keyValueStore = &platform.keyValueStore});
+        &accessorySetup, &(const HAPPlatformAccessorySetupOptions){ .keyValueStore = &platform.keyValueStore });
     platform.hapPlatform.accessorySetup = &accessorySetup;
 
     // TCP stream manager.
-    HAPLogDebug(&kHAPLog_Default, "HAPPlatformTCPStreamManagerCreate");
-    HAPPlatformTCPStreamManagerCreate(
-            &platform.tcpStreamManager,
-            &(const HAPPlatformTCPStreamManagerOptions){
-                    .interfaceName = NULL, // Listen on all available network interfaces.
-                    .port = kHAPNetworkPort_Default,
-                    .maxConcurrentTCPStreams = kHAPIPSessionStorage_NumElements});
+    HAPPlatformTCPStreamManagerCreate(&platform.tcpStreamManager,
+        &(const HAPPlatformTCPStreamManagerOptions){ .interfaceName = NULL,
+                                                     .port = kHAPNetworkPort_Default,
+                                                     .maxConcurrentTCPStreams = kHAPIPSessionStorage_NumElements });
 
     // Software Token provider. Depends on key-value store.
-    HAPLogDebug(&kHAPLog_Default, "HAPPlatformMFiTokenAuthCreate");
-    HAPPlatformMFiTokenAuthCreate(
-        &platform.mfiTokenAuth,
-        &(const HAPPlatformMFiTokenAuthOptions){.keyValueStore = &platform.keyValueStore});
+    HAPPlatformMFiTokenAuthCreate(&platform.mfiTokenAuth,
+        &(const HAPPlatformMFiTokenAuthOptions){ .keyValueStore = &platform.keyValueStore });
 
     // Run loop.
-    HAPLogDebug(&kHAPLog_Default, "HAPPlatformRunLoopCreate");
-    HAPPlatformRunLoopCreate(&(const HAPPlatformRunLoopOptions){.keyValueStore = &platform.keyValueStore});
+    HAPPlatformRunLoopCreate(&(const HAPPlatformRunLoopOptions){ .keyValueStore = &platform.keyValueStore });
 
     platform.hapAccessoryServerOptions.maxPairings = kHAPPairingStorage_MinElements;
     platform.hapPlatform.authentication.mfiTokenAuth =
@@ -213,8 +198,7 @@ void RestorePlatformFactorySettings(void)
     const SlWlanSecParams_t securityParams = {
         .Key = (signed char *)securityKey,
         .KeyLen = strlen(securityKey),
-        .Type = SL_WLAN_SEC_TYPE_WPA_WPA2
-    };
+        .Type = SL_WLAN_SEC_TYPE_WPA_WPA2 };
     sl_WlanProfileAdd((signed char *)ssid, strlen(ssid), 0, &securityParams, NULL, 7, 0);
 
     // Restore NetApp defaults.
@@ -313,15 +297,13 @@ static void InitializeIP()
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-// Main Task
+// Main task.
 //----------------------------------------------------------------------------------------------------------------------
 
 void MainTask(void *pvParameters)
 {
-    LED_Handle yellowLEDHandle = LED_open(BOARD_LED0, NULL);
-    LED_Handle blueLEDHandle = LED_open(BOARD_LED1, NULL);
-    
-    LED_startBlinking(yellowLEDHandle, 250, LED_BLINK_FOREVER);
+    LED_Handle ledHandle = LED_open(BOARD_YELLOW_LED, NULL);
+    LED_startBlinking(ledHandle, 250, LED_BLINK_FOREVER);
 
     StartNetworkProcessor();
 
@@ -351,11 +333,9 @@ void MainTask(void *pvParameters)
 
     // Perform Application-specific initializations such as setting up callbacks
     // and configure any additional unique platform dependencies.
-    HAPLogInfo(&kHAPLog_Default, "AppInitialize");
     AppInitialize(&platform.hapAccessoryServerOptions, &platform.hapPlatform, &platform.hapAccessoryServerCallbacks);
 
     // Initialize accessory server.
-    HAPLogInfo(&kHAPLog_Default, "HAPAccessoryServerCreate");
     HAPAccessoryServerCreate(
         &accessoryServer,
         &platform.hapAccessoryServerOptions,
@@ -363,17 +343,12 @@ void MainTask(void *pvParameters)
         &platform.hapAccessoryServerCallbacks,
         NULL);
     
-    HAPLogInfo(&kHAPLog_Default, "AppCreate");
     AppCreate(&accessoryServer, &platform.keyValueStore);
-
-    HAPLogInfo(&kHAPLog_Default, "AppAccessoryServerStart");
     AppAccessoryServerStart();
 
-    LED_stopBlinking(yellowLEDHandle);
-    LED_setOn(blueLEDHandle, UINT8_MAX);
+    LED_stopBlinking(ledHandle);
 
     // Run main loop until explicitly stopped.
-    HAPLogInfo(&kHAPLog_Default, "HAPPlatformRunLoopRun");
     HAPPlatformRunLoopRun();
 
     // Cleanup.
@@ -382,11 +357,18 @@ void MainTask(void *pvParameters)
     DeinitializePlatform();
 }
 
+//----------------------------------------------------------------------------------------------------------------------
+// Application entry point.
+//----------------------------------------------------------------------------------------------------------------------
+
 int main(void)
 {
     BaseType_t rc;
     
-    InitializeBoard();
+    Board_init();
+    
+    // Enable SEGGER SystemView.
+    //traceSTART();
 
     // Create the main application task.
     rc = xTaskCreate((TaskFunction_t)MainTask, // pvTaskCode
@@ -397,7 +379,7 @@ int main(void)
                      &mainTaskHandle);         // pxCreatedTask
     
     if (rc != pdPASS) {
-        HAPLogError(&kHAPLog_Default, "Failed to create main task.");
+        HAPLogFault(&kHAPLog_Default, "Failed to create main task.");
         HAPFatalError();
     }
     
@@ -410,7 +392,7 @@ int main(void)
                      &uartTaskHandle);         // pxCreatedTask
 
     if (rc != pdPASS) {
-        HAPLogError(&kHAPLog_Default, "Failed to create UART task.");
+        HAPLogFault(&kHAPLog_Default, "Failed to create UART task.");
         HAPFatalError();
     }
 
