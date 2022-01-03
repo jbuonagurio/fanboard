@@ -413,10 +413,9 @@ add_executable(${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME} PRIVATE
     "app/Board.c"
-    "app/Event.c"
+    "app/NWPEvent.c"
     "app/App.c"
     "app/DB.c"
-    "app/LED.c"
     "app/UART.c"
     "app/Utilities.c"
     "app/Main.c"
