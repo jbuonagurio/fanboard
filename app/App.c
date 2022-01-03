@@ -21,7 +21,6 @@ typedef struct {
     struct {
         HAPCharacteristicValue_Active active;
         float fanRotationSpeed;
-        HAPCharacteristicValue_RotationDirection fanRotationDirection;
         bool lightBulbOn;
         int32_t lightBulbBrightness;
     } state;
@@ -86,7 +85,6 @@ static void LoadAccessoryState(void)
         HAPRawBufferZero(&accessoryConfiguration.state, sizeof accessoryConfiguration.state);
         accessoryConfiguration.state.active = kHAPCharacteristicValue_Active_Inactive;
         accessoryConfiguration.state.fanRotationSpeed = 1;
-        accessoryConfiguration.state.fanRotationDirection = kHAPCharacteristicValue_RotationDirection_Clockwise;
         accessoryConfiguration.state.lightBulbOn = false;
         accessoryConfiguration.state.lightBulbBrightness = 0;
     }
@@ -128,8 +126,8 @@ static void ToggleFanActive(void)
         break;
     }
 
-    SaveAccessoryState();
-    HAPAccessoryServerRaiseEvent(accessoryConfiguration.server, &fanActiveCharacteristic, &fanService, &accessory);
+    //SaveAccessoryState();
+    //HAPAccessoryServerRaiseEvent(accessoryConfiguration.server, &fanActiveCharacteristic, &fanService, &accessory);
 }
 
 static void IncreaseFanRotationSpeed(void)
@@ -152,8 +150,8 @@ static void ToggleLightBulbState(void)
         SendLightControlCommand(0x0000);
     }
 
-    SaveAccessoryState();
-    HAPAccessoryServerRaiseEvent(accessoryConfiguration.server, &fanActiveCharacteristic, &fanService, &accessory);
+    //SaveAccessoryState();
+    //HAPAccessoryServerRaiseEvent(accessoryConfiguration.server, &fanActiveCharacteristic, &fanService, &accessory);
 }
 
 static void IncreaseLightBulbBrightness(void)
@@ -203,12 +201,17 @@ static void HandleRemoteControlEventCallback(void *_Nullable context, size_t con
 
 void HandleRemoteControlEvent(uint16_t event)
 {
+    // TODO: Static allocation of context.
     HAPError err = HAPPlatformRunLoopScheduleCallback(HandleRemoteControlEventCallback, &event, sizeof event);
     if (err) {
         HAPLogError(&kHAPLog_Default, "HAPPlatformRunLoopScheduleCallback failed.");
         HAPFatalError();
     }
 }
+
+//void HandleFanRotationSpeedChanged(uint16_t fanRotationSpeed)
+//void HandleLightBulbBrightnessChanged(uint16_t lightBulbBrightness)
+
 
 HAP_RESULT_USE_CHECK
 HAPError IdentifyAccessory(HAPAccessoryServerRef *server HAP_UNUSED,
@@ -256,9 +259,10 @@ HAPError HandleFanActiveWrite(HAPAccessoryServerRef* server,
 
     if (accessoryConfiguration.state.active != active) {
         accessoryConfiguration.state.active = active;
-        ToggleFanActive();
-        SaveAccessoryState();
-        HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
+        // TODO: Send fan control command and wait for response.
+        //ToggleFanActive();
+        //SaveAccessoryState();
+        //HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
     }
     return kHAPError_None;
 }
@@ -283,52 +287,9 @@ HAPError HandleFanRotationSpeedWrite(HAPAccessoryServerRef *server,
     HAPLogInfo(&kHAPLog_Default, "%s: %d", __func__, (int)(value));
     if (accessoryConfiguration.state.fanRotationSpeed != value) {
         accessoryConfiguration.state.fanRotationSpeed = value;
-        // Set fan rotation speed
-        SaveAccessoryState();
-        HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
-    }
-    return kHAPError_None;
-}
-
-HAP_RESULT_USE_CHECK
-HAPError HandleFanRotationDirectionRead(HAPAccessoryServerRef* server HAP_UNUSED,
-                                        const HAPIntCharacteristicReadRequest* request HAP_UNUSED,
-                                        int32_t* value,
-                                        void* _Nullable context HAP_UNUSED)
-{
-    *value = accessoryConfiguration.state.fanRotationDirection;
-    switch (*value) {
-        case kHAPCharacteristicValue_RotationDirection_Clockwise: {
-            HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, "RotationDirection_Clockwise");
-        } break;
-        case kHAPCharacteristicValue_RotationDirection_CounterClockwise: {
-            HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, "RotationDirection_CounterClockwise");
-        } break;
-    }
-    return kHAPError_None;
-}
-
-HAP_RESULT_USE_CHECK
-HAPError HandleFanRotationDirectionWrite(HAPAccessoryServerRef* server,
-                                         const HAPIntCharacteristicWriteRequest* request,
-                                         int32_t value,
-                                         void* _Nullable context HAP_UNUSED)
-{
-    HAPCharacteristicValue_RotationDirection fanRotationDirection = (HAPCharacteristicValue_RotationDirection) value;
-    switch (fanRotationDirection) {
-        case kHAPCharacteristicValue_RotationDirection_Clockwise: {
-            HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, "RotationDirection_Clockwise");
-        } break;
-        case kHAPCharacteristicValue_RotationDirection_CounterClockwise: {
-            HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, "RotationDirection_CounterClockwise");
-        } break;
-    }
-
-    if (accessoryConfiguration.state.fanRotationDirection != fanRotationDirection) {
-        accessoryConfiguration.state.fanRotationDirection = fanRotationDirection;
-        // Set fan rotation direction
-        SaveAccessoryState();
-        HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
+        // TODO: Send fan control command and wait for response.
+        //SaveAccessoryState();
+        //HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
     }
     return kHAPError_None;
 }
@@ -353,9 +314,10 @@ HAPError HandleLightBulbOnWrite(HAPAccessoryServerRef *server,
     HAPLogInfo(&kHAPLog_Default, "%s: %s", __func__, value ? "true" : "false");
     if (accessoryConfiguration.state.lightBulbOn != value) {
         accessoryConfiguration.state.lightBulbOn = value;
-        ToggleLightBulbState();
-        SaveAccessoryState();
-        HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
+        // TODO: Send light control command and wait for response.
+        //ToggleLightBulbState();
+        //SaveAccessoryState();
+        //HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
     }
     return kHAPError_None;
 }
@@ -380,9 +342,9 @@ HAPError HandleLightBulbBrightnessWrite(HAPAccessoryServerRef *server,
     HAPLogInfo(&kHAPLog_Default, "%s: %d", __func__, (int)(value));
     if (accessoryConfiguration.state.lightBulbBrightness != value) {
         accessoryConfiguration.state.lightBulbBrightness = value;
-        // Set brightness.
-        SaveAccessoryState();
-        HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
+        // TODO: Send light control command and wait for response.
+        //SaveAccessoryState();
+        //HAPAccessoryServerRaiseEvent(server, request->characteristic, request->service, request->accessory);
     }
     return kHAPError_None;
 }

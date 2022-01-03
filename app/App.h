@@ -65,23 +65,6 @@ HAPError HandleFanRotationSpeedWrite(HAPAccessoryServerRef *server,
                                      const HAPFloatCharacteristicWriteRequest *request,
                                      float value,
                                      void* _Nullable context);
-/**
- * Handle read request to the 'Rotation Direction' characteristic of the Fan service.
- */
-HAP_RESULT_USE_CHECK
-HAPError HandleFanRotationDirectionRead(HAPAccessoryServerRef *server,
-                                        const HAPIntCharacteristicReadRequest *request,
-                                        int32_t* value,
-                                        void* _Nullable context);
-
-/**
- * Handle write request to the 'Rotation Direction' characteristic of the Fan service.
- */
-HAP_RESULT_USE_CHECK
-HAPError HandleFanRotationDirectionWrite(HAPAccessoryServerRef *server,
-                                         const HAPIntCharacteristicWriteRequest *request,
-                                         int32_t value,
-                                         void* _Nullable context);
 
 /**
  * Handle read request to the 'On' characteristic of the LightBulb service.

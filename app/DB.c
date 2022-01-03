@@ -37,14 +37,13 @@
 #define kIID_FanName                   ((uint64_t) 0x0032)
 #define kIID_FanActive                 ((uint64_t) 0x0033)
 #define kIID_FanRotationSpeed          ((uint64_t) 0x0034)
-#define kIID_FanRotationDirection      ((uint64_t) 0x0035)
 
 #define kIID_LightBulb                 ((uint64_t) 0x0040)
 #define kIID_LightBulbName             ((uint64_t) 0x0041)
 #define kIID_LightBulbOn               ((uint64_t) 0x0042)
 #define kIID_LightBulbBrightness       ((uint64_t) 0x0043)
 
-HAP_STATIC_ASSERT(kAttributeCount == 9 + 3 + 5 + 6 + 4, AttributeCount_mismatch);
+HAP_STATIC_ASSERT(kAttributeCount == 9 + 3 + 5 + 5 + 4, AttributeCount_mismatch);
 
 //----------------------------------------------------------------------------------------------------------------------
 // Accessory Information service.
@@ -470,30 +469,6 @@ const HAPUInt8Characteristic fanActiveCharacteristic = {
     .callbacks = { .handleRead = HandleFanActiveRead, .handleWrite = HandleFanActiveWrite }
 };
 
-const HAPIntCharacteristic fanRotationDirectionCharacteristic = {
-    .format = kHAPCharacteristicFormat_Int,
-    .iid = kIID_FanRotationDirection,
-    .characteristicType = &kHAPCharacteristicType_RotationDirection,
-    .debugDescription = kHAPCharacteristicDebugDescription_RotationDirection,
-    .manufacturerDescription = NULL,
-    .properties = { .readable = true,
-                    .writable = true,
-                    .supportsEventNotification = true,
-                    .hidden = false,
-                    .requiresTimedWrite = false,
-                    .supportsAuthorizationData = false,
-                    .ip = { .controlPoint = false, .supportsWriteResponse = false },
-                    .ble = { .supportsBroadcastNotification = true,
-                             .supportsDisconnectedNotification = true,
-                             .readableWithoutSecurity = false,
-                             .writableWithoutSecurity = false } },
-    .units = kHAPCharacteristicUnits_None,
-    .constraints = { .minimumValue = 0,
-                     .maximumValue = 1,
-                     .stepValue = 1 },
-    .callbacks = { .handleRead = HandleFanRotationDirectionRead, .handleWrite = HandleFanRotationDirectionWrite }
-};
-
 const HAPFloatCharacteristic fanRotationSpeedCharacteristic = {
     .format = kHAPCharacteristicFormat_Float,
     .iid = kIID_FanRotationSpeed,
@@ -529,7 +504,6 @@ const HAPService fanService = {
                                                             &fanNameCharacteristic,
                                                             &fanActiveCharacteristic,
                                                             &fanRotationSpeedCharacteristic,
-                                                            &fanRotationDirectionCharacteristic,
                                                             NULL }
 };
 
