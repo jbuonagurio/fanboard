@@ -10,7 +10,7 @@
 #include "AppDomains.h"
 #include "Board.h"
 #include "DB.h"
-#include "Event.h"
+#include "NWPEvent.h"
 #include "UART.h"
 #include "Utilities.h"
 

@@ -5,7 +5,7 @@
 //  See accompanying file LICENSE_1_0.txt or copy at
 //  http://www.boost.org/LICENSE_1_0.txt
 
-#include "Event.h"
+#include "NWPEvent.h"
 
 #include <stdint.h>
 
@@ -26,7 +26,7 @@ extern TaskHandle_t mainTaskHandle;
 static void InitializeNetworkModules()
 {
     SlNetIf_init(0);
-    SlNetIf_add(SLNETIF_ID_1, "wlan0", (const SlNetIf_Config_t *)&SlNetIfConfigWifi, kSimpleLink_InterfacePriority);               // priority
+    SlNetIf_add(SLNETIF_ID_1, "wlan0", (const SlNetIf_Config_t *)&SlNetIfConfigWifi, kSimpleLink_InterfacePriority);
     SlNetSock_init(0);
     SlNetUtil_init(0);
 }
