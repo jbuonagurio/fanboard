@@ -76,7 +76,6 @@ HAPNetworkPort HAPPlatformTCPStreamManagerGetListenerPort(HAPPlatformTCPStreamMa
  * @return kHAPError_None           If successful.
  * @return kHAPError_Unknown        If the nonblocking flag could not be set.
  */
-HAP_RESULT_USE_CHECK
 static HAPError SetNonblocking(int sd)
 {
     int v = 1;
@@ -100,7 +99,6 @@ static HAPError SetNonblocking(int sd)
  * @return kHAPError_None           If successful.
  * @return kHAPError_Unknown        If an error occurred while disabling coalescing of small segments.
  */
-HAP_RESULT_USE_CHECK
 static HAPError SetNodelay(int sd)
 {
     int v = 1;
@@ -405,16 +403,8 @@ HAPError HAPPlatformTCPStreamManagerAcceptTCPStream(HAPPlatformTCPStreamManagerR
     }
 
     // Configure socket.
-    int e = SetNonblocking(fileDescriptor);
-    if (e != 0) {
-        HAPLogError(&logObject, "Failed to configure TCP stream socket as non-blocking.");
-        //HAPFatalError();
-    }
-    e = SetNodelay(fileDescriptor);
-    if (e != 0) {
-        HAPLogError(&logObject, "Failed to disable Nagle's algorithm for TCP stream socket.");
-        //HAPFatalError();
-    }
+    SetNonblocking(fileDescriptor);
+    SetNodelay(fileDescriptor);
 
     HAPPlatformFileHandleRef fileHandle;
 
