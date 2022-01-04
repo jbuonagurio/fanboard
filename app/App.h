@@ -89,18 +89,18 @@ HAPError HandleLightBulbOnWrite(HAPAccessoryServerRef *server,
  */
 HAP_RESULT_USE_CHECK
 HAPError HandleLightBulbBrightnessRead(HAPAccessoryServerRef *server,
-                                        const HAPIntCharacteristicReadRequest *request,
-                                        int32_t* value,
-                                        void* _Nullable context);
+                                       const HAPIntCharacteristicReadRequest *request,
+                                       int32_t* value,
+                                       void* _Nullable context);
 
 /**
  * Handle write request to the 'Brightness' characteristic of the LightBulb service.
  */
 HAP_RESULT_USE_CHECK
 HAPError HandleLightBulbBrightnessWrite(HAPAccessoryServerRef *server,
-                                         const HAPIntCharacteristicWriteRequest *request,
-                                         int32_t value,
-                                         void* _Nullable context);
+                                        const HAPIntCharacteristicWriteRequest *request,
+                                        int32_t value,
+                                        void* _Nullable context);
 
 /**
  * Initialize the application.
