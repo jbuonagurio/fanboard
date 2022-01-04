@@ -22,10 +22,10 @@ HAP_NORETURN
 void HAPPlatformAbort(void)
 {
     // Stop the NWP.
-    sl_Stop(200);
+    sl_Stop(200U);
 
     // Short delay for debug log output before reset.
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(500UL));
 
     // Trigger a hibernate cycle for the device using RTC.
     MAP_PRCMHibernateCycleTrigger();
