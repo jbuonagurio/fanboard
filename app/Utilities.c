@@ -43,14 +43,14 @@ void PrintStorageInfo()
     }
 
     HAPLogInfo(&kHAPLog_Default, "DeviceUsage.DeviceBlockSize = %u", storageInfo.DeviceUsage.DeviceBlockSize);
+    HAPLogInfo(&kHAPLog_Default, "DeviceUsage.DeviceBlocksCapacity = %u", storageInfo.DeviceUsage.DeviceBlocksCapacity);
     HAPLogInfo(&kHAPLog_Default, "DeviceUsage.NumOfAllocatedBlocks = %u", storageInfo.DeviceUsage.NumOfAllocatedBlocks);
+    HAPLogInfo(&kHAPLog_Default, "DeviceUsage.NumOfReservedBlocks = %u", storageInfo.DeviceUsage.NumOfReservedBlocks);
+    HAPLogInfo(&kHAPLog_Default, "DeviceUsage.NumOfReservedBlocksForSystemFiles = %u", storageInfo.DeviceUsage.NumOfReservedBlocksForSystemfiles);
+    HAPLogInfo(&kHAPLog_Default, "DeviceUsage.LargestAllocatedGapInBlocks = %u", storageInfo.DeviceUsage.LargestAllocatedGapInBlocks);
     HAPLogInfo(&kHAPLog_Default, "DeviceUsage.NumOfAvailableBlocksForUserFiles = %u", storageInfo.DeviceUsage.NumOfAvailableBlocksForUserFiles);
-
     HAPLogInfo(&kHAPLog_Default, "FilesUsage.MaxFsFiles = %u", (unsigned short)storageInfo.FilesUsage.MaxFsFiles);
-    HAPLogInfo(&kHAPLog_Default, "FilesUsage.ActualNumOfUserFiles = %u", (unsigned short)storageInfo.FilesUsage.ActualNumOfUserFiles);
-    HAPLogInfo(&kHAPLog_Default, "FilesUsage.NumOfAlerts = %lu", storageInfo.FilesUsage.NumOfAlerts);
-    HAPLogInfo(&kHAPLog_Default, "FilesUsage.NumOfAlertsThreshold = %lu", storageInfo.FilesUsage.NumOfAlertsThreshold);
-    HAPLogInfo(&kHAPLog_Default, "FilesUsage.FATWriteCounter = %u", storageInfo.FilesUsage.FATWriteCounter);
+    HAPLogInfo(&kHAPLog_Default, "FilesUsage.IsDevelopmentFormatType = %u", (unsigned short)storageInfo.FilesUsage.IsDevlopmentFormatType);
     switch (storageInfo.FilesUsage.Bundlestate) {
     case SL_FS_BUNDLE_STATE_STOPPED:
         HAPLogInfo(&kHAPLog_Default, "FilesUsage.BundleState = SL_FS_BUNDLE_STATE_STOPPED");
@@ -64,6 +64,11 @@ void PrintStorageInfo()
     default:
         break;
     }
+    HAPLogInfo(&kHAPLog_Default, "FilesUsage.ActualNumOfUserFiles = %u", (unsigned short)storageInfo.FilesUsage.ActualNumOfUserFiles);
+    HAPLogInfo(&kHAPLog_Default, "FilesUsage.ActualNumOfSysFiles = %u", (unsigned short)storageInfo.FilesUsage.ActualNumOfSysFiles);
+    HAPLogInfo(&kHAPLog_Default, "FilesUsage.NumOfAlerts = %lu", storageInfo.FilesUsage.NumOfAlerts);
+    HAPLogInfo(&kHAPLog_Default, "FilesUsage.NumOfAlertsThreshold = %lu", storageInfo.FilesUsage.NumOfAlertsThreshold);
+    HAPLogInfo(&kHAPLog_Default, "FilesUsage.FATWriteCounter = %u", storageInfo.FilesUsage.FATWriteCounter);
 }
 
 void PrintFileList()
