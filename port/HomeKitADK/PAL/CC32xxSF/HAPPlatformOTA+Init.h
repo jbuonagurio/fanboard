@@ -63,10 +63,9 @@ HAP_ENUM_BEGIN(uint8_t, HAPPlatformOTAPALImageState) {
  */
 typedef struct {
     uint8_t *filePath;           /*!< @brief Update file pathname. */
-    int32_t file;                /*!< @brief File descriptor. */
+    int32_t fileDescriptor;      /*!< @brief File descriptor. */
     uint32_t fileSize;           /*!< @brief The size of the file in bytes. */
     uint8_t *certFilePath;       /*!< @brief Pathname of the certificate file used to validate the receive file. */
-    uint32_t fileType;           /*!< @brief The file type id set when creating the OTA job. */
     uint8_t *signature;          /*!< @brief Pointer to the file's signature. */
     uint32_t signatureSize;      /*!< @brief The size of the file's signature in bytes. */
 } HAPPlatformOTAContext;

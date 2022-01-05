@@ -157,10 +157,11 @@ HAPError HAPPlatformOTACreate(HAPPlatformOTAContext *otaContext)
     uint32_t flags;
     int32_t retval;
 
-    otaContext->file = -1;
+    otaContext->fileDescriptor = -1;
 
     if (otaContext->fileSize <= kOTA_MaxImageSize) {
-        if(otaContext->fileType == 0) {
+        bool isFlashImage = HAPStringAreEqual((const char *)otaContext->filePath, "/sys/mcuflashimg.bin");
+        if (isFlashImage) {
             flags = SL_FS_CREATE | SL_FS_OVERWRITE | SL_FS_CREATE_FAILSAFE |
                     SL_FS_CREATE_PUBLIC_WRITE | SL_FS_WRITE_BUNDLE_FILE |
                     SL_FS_CREATE_SECURE | SL_FS_CREATE_VENDOR_TOKEN;
@@ -181,7 +182,7 @@ HAPError HAPPlatformOTACreate(HAPPlatformOTAContext *otaContext)
                 retval = sl_FsOpen((uint8_t *)otaContext->filePath, (uint32_t)(flags | SL_FS_CREATE_MAX_SIZE(otaContext->fileSize)), (uint32_t *)&token);
                 if (retval > 0) {
                     HAPLogInfo(&logObject, "Receive file created. Token: %lu.", token);
-                    otaContext->file = (int32_t)retval;
+                    otaContext->fileDescriptor = (int32_t)retval;
                     err = kHAPError_None;
                 }
                 else {
@@ -197,7 +198,7 @@ HAPError HAPPlatformOTACreate(HAPPlatformOTAContext *otaContext)
                         RollbackRxFile(otaContext);
                     }
                     else {
-                        if (otaContext->fileType == 0) {
+                        if (!isFlashImage) {
                             /* Attempt to roll back the bundle and try again. */
                             RollbackBundle();
                         }
@@ -224,7 +225,7 @@ HAPError HAPPlatformOTACreate(HAPPlatformOTAContext *otaContext)
 HAPError HAPPlatformOTAClose(const HAPPlatformOTAContext *otaContext)
 {
     HAPLogInfo(&logObject, "Authenticating and closing file.");
-    int16_t retval = sl_FsClose(otaContext->file,
+    int16_t retval = sl_FsClose(otaContext->fileDescriptor,
                                 otaContext->certFilePath,
                                 otaContext->signature,
                                 (uint32_t)(otaContext->signatureSize));
@@ -256,7 +257,7 @@ int16_t HAPPlatformOTAWriteBlock(const HAPPlatformOTAContext *otaContext,
     uint32_t numBytesWritten = 0;
     uint32_t retry;
     for (retry = 0UL; retry <= kOTA_MaxBlockWriteRetries; retry++) {
-        retval = sl_FsWrite(otaContext->file, offset + numBytesWritten, &bytes[numBytesWritten], numBytes);
+        retval = sl_FsWrite(otaContext->fileDescriptor, offset + numBytesWritten, &bytes[numBytesWritten], numBytes);
         if (retval >= 0) {
             if (numBytes == (uint32_t)retval) {
                 /* If we wrote all of the bytes requested, we're done. */
