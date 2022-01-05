@@ -394,7 +394,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(homekitadk PUBLIC
         -DHAP_LOG_LEVEL=3
         -DHAP_LOG_SENSITIVE=1
-        -DHAP_LOG_REMOTE=1
+        -DHAP_LOG_REMOTE=0
         -DHAP_DISABLE_ASSERTS=0
         -DHAP_DISABLE_PRECONDITIONS=0)
 else()
@@ -413,14 +413,19 @@ endif()
 add_executable(${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME} PRIVATE
-    "app/Board.c"
-    "app/NWPEvent.c"
-    "app/App.c"
-    "app/DB.c"
-    "app/UART.c"
-    "app/Utilities.c"
-    "app/Main.c"
+    "${PROJECT_SOURCE_DIR}/app/App.c"
+    "${PROJECT_SOURCE_DIR}/app/Board.c"
+    "${PROJECT_SOURCE_DIR}/app/DB.c"
+    "${PROJECT_SOURCE_DIR}/app/HTTP.c"
+    "${PROJECT_SOURCE_DIR}/app/Main.c"
+    "${PROJECT_SOURCE_DIR}/app/NWPEvent.c"
+    "${PROJECT_SOURCE_DIR}/app/UART.c"
+    "${PROJECT_SOURCE_DIR}/app/Utilities.c"
+    "${PROJECT_SOURCE_DIR}/external/multipart-parser/multipartparser.c"
     "${STARTUP_FILE}")
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+    "${PROJECT_SOURCE_DIR}/external/multipart-parser")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     freertos

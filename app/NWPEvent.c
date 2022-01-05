@@ -6,6 +6,7 @@
 //  http://www.boost.org/LICENSE_1_0.txt
 
 #include "NWPEvent.h"
+#include "HTTP.h"
 
 #include <stdint.h>
 
@@ -158,18 +159,24 @@ void SimpleLinkNetAppEventHandler(SlNetAppEvent_t *pSlNetAppEvent)
 void SimpleLinkHttpServerEventHandler(SlNetAppHttpServerEvent_t *pSlHttpServerEvent,
                                       SlNetAppHttpServerResponse_t *pSlHttpServerResponse)
 {
-    // Not Implemented
+    switch (pSlHttpServerEvent->Event) {
+    case SL_NETAPP_EVENT_HTTP_TOKEN_GET:
+    case SL_NETAPP_EVENT_HTTP_TOKEN_POST:
+    default:
+        break;
+    }
 }
 
 void SimpleLinkNetAppRequestEventHandler(SlNetAppRequest_t *pNetAppRequest,
                                          SlNetAppResponse_t *pNetAppResponse)
 {
-    // Not Implemented
+    // Pass event to application context.
+    HTTPRequestHandler(pNetAppRequest, pNetAppResponse);
 }
 
 void SimpleLinkNetAppRequestMemFreeEventHandler(uint8_t *buffer)
 {
-    // Not Implemented
+    // Not implemented.
 }
 
 void SimpleLinkWlanEventHandler(SlWlanEvent_t *pSlWlanEvent)

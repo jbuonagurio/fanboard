@@ -6,10 +6,12 @@
 //  http://www.boost.org/LICENSE_1_0.txt
 
 #include "Config.h"
+
 #include "App.h"
 #include "AppDomains.h"
 #include "Board.h"
 #include "DB.h"
+#include "HTTP.h"
 #include "NWPEvent.h"
 #include "UART.h"
 #include "Utilities.h"
@@ -46,6 +48,9 @@
 #define kApp_RunLoopPriority (tskIDLE_PRIORITY + 3)
 #define kApp_RunLoopStackSize (2048) // 64K
 
+#define kApp_HTTPTaskPriority (tskIDLE_PRIORITY + 4)
+#define kApp_HTTPTaskStackSize (1024) // 32K
+
 // NWP stop timeout in milliseconds.
 #define kSimpleLink_StopTimeout (200)
 
@@ -63,8 +68,9 @@ static bool clearPairings = false;
 
 // FreeRTOS handles.
 TaskHandle_t mainTaskHandle;
-TaskHandle_t hostTaskHandle;
+TaskHandle_t httpTaskHandle;
 TaskHandle_t uartTaskHandle;
+TaskHandle_t hostTaskHandle;
 
 // Global platform objects.
 // Only tracks objects that will be released in DeinitializePlatform.
@@ -393,6 +399,19 @@ int main(void)
 
     if (rc != pdPASS) {
         HAPLogFault(&kHAPLog_Default, "Failed to create UART task.");
+        HAPFatalError();
+    }
+
+    // Create the HTTP task.
+    rc = xTaskCreate((TaskFunction_t)HTTPTask, // pvTaskCode
+                     "HTTP",                   // pcName
+                     kApp_HTTPTaskStackSize,   // usStackDepth
+                     NULL,                     // pvParameters
+                     kApp_HTTPTaskPriority,    // uxPriority
+                     &uartTaskHandle);         // pxCreatedTask
+
+    if (rc != pdPASS) {
+        HAPLogFault(&kHAPLog_Default, "Failed to create HTTP task.");
         HAPFatalError();
     }
 
