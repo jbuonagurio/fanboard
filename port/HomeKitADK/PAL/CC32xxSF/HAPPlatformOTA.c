@@ -389,27 +389,28 @@ HAPPlatformOTAPALImageState HAPPlatformOTAGetImageState(const HAPPlatformOTACont
 
     const uint32_t checkFlagsGood = SL_FS_INFO_SYS_FILE | SL_FS_INFO_SECURE | SL_FS_INFO_PUBLIC_WRITE;
 
-    HAPPlatformOTAPALImageState state = kHAPPlatformOTAPALImageState_Unknown;
     SlFsFileInfo_t fileInfo;
     int32_t rc = sl_FsGetInfo((const uint8_t *)"/sys/mcuflashimg.bin", kOTA_VendorToken, &fileInfo);
-    if (rc == 0) {
+    if (rc == SL_ERROR_FS_FILE_NOT_EXISTS) {
+        return kHAPPlatformOTAPALImageState_Unknown;
+    }
+    else if (rc == 0) {
         HAPLogDebug(&logObject, "Current platform image flags: %04x.", fileInfo.Flags);
         if ((fileInfo.Flags & (uint16_t)SL_FS_INFO_PENDING_BUNDLE_COMMIT) != 0U) {
-            state = kHAPPlatformOTAPALImageState_PendingCommit;
             HAPLogDebug(&logObject, "Current platform image state: kHAPPlatformOTAPALImageState_PendingCommit.");
+            return kHAPPlatformOTAPALImageState_PendingCommit;
         }
         else if ((fileInfo.Flags & checkFlags) == checkFlagsGood) {
-            state = kHAPPlatformOTAPALImageState_Valid;
             HAPLogDebug(&logObject, "Current platform image state: kHAPPlatformOTAPALImageState_Valid.");
+            return kHAPPlatformOTAPALImageState_Valid;
         }
         else {
-            state = kHAPPlatformOTAPALImageState_Invalid;
             HAPLogDebug(&logObject, "Current platform image state: kHAPPlatformOTAPALImageState_Invalid.");
+            return kHAPPlatformOTAPALImageState_Invalid;
         }
     }
     else {
         HAPLogError(&logObject, "sl_FsGetInfo failed (%ld) on /sys/mcuflashimg.bin.", (int32_t)rc);
-        state = kHAPPlatformOTAPALImageState_Invalid;
+        return kHAPPlatformOTAPALImageState_Invalid;
     }
-    return state;
 }
