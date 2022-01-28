@@ -1,4 +1,4 @@
-##  Copyright 2021 John Buonagurio
+##  Copyright 2022 John Buonagurio
 ##
 ##  Distributed under the Boost Software License, Version 1.0.
 ##
@@ -29,6 +29,7 @@ set(FREERTOS_DIR "${PROJECT_SOURCE_DIR}/external/FreeRTOS-Kernel" CACHE PATH "Pa
 set(HOMEKIT_ADK_DIR "${PROJECT_SOURCE_DIR}/external/HomeKitADK" CACHE PATH "Path to HomeKit ADK")
 set(SEGGER_DIR "${PROJECT_SOURCE_DIR}/external/SEGGER" CACHE PATH "Path to SEGGER RTT and SystemView")
 set(MBEDTLS_DIR "${PROJECT_SOURCE_DIR}/external/mbedtls" CACHE PATH "Path to Mbed TLS")
+set(MULTIPART_PARSER_DIR "${PROJECT_SOURCE_DIR}/external/multipart-parser" CACHE PATH "Path to multipart-parser")
 
 set(LINKER_SCRIPT "${PROJECT_SOURCE_DIR}/linker/cc32xxsf_freertos.lds")
 set(STARTUP_FILE "${PROJECT_SOURCE_DIR}/startup/startup_cc32xx_gcc.c")
@@ -407,6 +408,13 @@ else()
 endif()
 
 #----------------------------------------------------------------------
+# Target: multipart_parser
+#----------------------------------------------------------------------
+
+add_library(multipart_parser "${MULTIPART_PARSER_DIR}/multipartparser.c")
+target_include_directories(multipart_parser PUBLIC "${MULTIPART_PARSER_DIR}")
+
+#----------------------------------------------------------------------
 # Target: Application
 #----------------------------------------------------------------------
 
@@ -416,16 +424,13 @@ target_sources(${PROJECT_NAME} PRIVATE
     "${PROJECT_SOURCE_DIR}/app/App.c"
     "${PROJECT_SOURCE_DIR}/app/Board.c"
     "${PROJECT_SOURCE_DIR}/app/DB.c"
-    "${PROJECT_SOURCE_DIR}/app/HTTP.c"
+    "${PROJECT_SOURCE_DIR}/app/HTTPServer.c"
     "${PROJECT_SOURCE_DIR}/app/Main.c"
     "${PROJECT_SOURCE_DIR}/app/NWPEvent.c"
+    "${PROJECT_SOURCE_DIR}/app/OTA.c"
     "${PROJECT_SOURCE_DIR}/app/UART.c"
     "${PROJECT_SOURCE_DIR}/app/Utilities.c"
-    "${PROJECT_SOURCE_DIR}/external/multipart-parser/multipartparser.c"
     "${STARTUP_FILE}")
-
-target_include_directories(${PROJECT_NAME} PRIVATE
-    "${PROJECT_SOURCE_DIR}/external/multipart-parser")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     freertos
@@ -434,15 +439,17 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ti_net_utils
     ti_net
     ti_devices_cc32xx_driverlib
-    homekitadk)
+    homekitadk
+    multipart_parser)
 
 # __SF_DEBUG__ enables the .dbghdr section, which skips the integrity
 # check phase of booting and signals to the bootloader that it should
 # should not attempt an erase of the image. See SimpleLink Wi-Fi CC323x
 # Technical Reference Manual, Section 21.10: Debugging Flash User
-# Application Using JTAG.
+# Application Using JTAG. Note: debug image is written to 0x01000000.
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE -D__SF_DEBUG__)
+#target_compile_definitions(${PROJECT_NAME} PRIVATE -D__SF_NODEBUG__)
 
 target_link_options(${PROJECT_NAME} PRIVATE "LINKER:-Map=${PROJECT_NAME}.map")
 target_link_options(${PROJECT_NAME} PRIVATE "LINKER:-T,${LINKER_SCRIPT}")

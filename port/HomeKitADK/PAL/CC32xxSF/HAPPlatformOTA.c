@@ -1,7 +1,7 @@
 /*
  * FreeRTOS OTA PAL for CC3220SF-LAUNCHXL V2.0.0
  * Copyright (c) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
- * Copyright (c) 2021 John Buonagurio
+ * Copyright (c) 2022 John Buonagurio
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -40,9 +40,6 @@ static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, 
 
 /* This is our specific file token for OTA updates. */
 #define kOTA_VendorToken 1952007250UL
-
-/* Maximum allowed size of an MCU update image for this platform. */
-#define kOTA_MaxImageSize (512UL * 1024UL)
 
 /* Maximum allowed block write retries (in addition to the first try). */
 #define kOTA_MaxBlockWriteRetries 3U
@@ -150,6 +147,28 @@ static int32_t CreateBootInfoFile(void)
     return retval;
 }
 
+HAPError HAPPlatformOTAAbort(HAPPlatformOTAContext *otaContext)
+{
+    /* Do nothing if file descriptor is invalid. */
+    if (otaContext->fileDescriptor < 0)
+        return kHAPError_None;
+
+    /* Call sl_FsClose with signature = 'A' for abort. */
+    uint8_t signature[] = "A";
+    int32_t retval = sl_FsClose(otaContext->fileDescriptor, (uint8_t *)NULL, (uint8_t *)signature, 1);
+    if (retval < 0) {
+        HAPLogError(&logObject, "File abort failed (%ld).", retval);
+    }
+
+    otaContext->fileDescriptor = -1;
+    RollbackBundle();
+
+    if (retval != 0)
+        return kHAPError_Unknown;
+    
+    return kHAPError_None;
+}
+
 HAPError HAPPlatformOTACreate(HAPPlatformOTAContext *otaContext)
 {
     HAPError err = kHAPError_Unknown;
@@ -159,7 +178,7 @@ HAPError HAPPlatformOTACreate(HAPPlatformOTAContext *otaContext)
 
     otaContext->fileDescriptor = -1;
 
-    if (otaContext->fileSize <= kOTA_MaxImageSize) {
+    if (otaContext->maxFileSize <= kHAPPlatformOTA_MaxImageSize) {
         bool isFlashImage = HAPStringAreEqual((const char *)otaContext->filePath, "/sys/mcuflashimg.bin");
         if (isFlashImage) {
             flags = SL_FS_CREATE | SL_FS_OVERWRITE | SL_FS_CREATE_FAILSAFE |
@@ -179,7 +198,10 @@ HAPError HAPPlatformOTACreate(HAPPlatformOTAContext *otaContext)
             int32_t retry = 0;
             do {
                 /* The file remains open until the OTA agent calls HAPPlatformOTAClose() after transfer or failure. */
-                retval = sl_FsOpen((uint8_t *)otaContext->filePath, (uint32_t)(flags | SL_FS_CREATE_MAX_SIZE(otaContext->fileSize)), (uint32_t *)&token);
+                retval = sl_FsOpen((uint8_t *)otaContext->filePath,
+                                   (uint32_t)(flags | SL_FS_CREATE_MAX_SIZE(otaContext->maxFileSize)),
+                                   (uint32_t *)&token);
+                
                 if (retval > 0) {
                     HAPLogInfo(&logObject, "Receive file created. Token: %lu.", token);
                     otaContext->fileDescriptor = (int32_t)retval;
@@ -194,12 +216,12 @@ HAPError HAPPlatformOTACreate(HAPPlatformOTAContext *otaContext)
                         }
                     }
                     else if (retval == SL_ERROR_FS_FILE_IS_PENDING_COMMIT) {
-                        /* Attempt to roll back the receive file and try again. */
+                        /* Attempt to rollback the receive file and try again. */
                         RollbackRxFile(otaContext);
                     }
                     else {
                         if (!isFlashImage) {
-                            /* Attempt to roll back the bundle and try again. */
+                            /* Attempt to rollback the bundle and try again. */
                             RollbackBundle();
                         }
                     }
@@ -224,10 +246,14 @@ HAPError HAPPlatformOTACreate(HAPPlatformOTAContext *otaContext)
 
 HAPError HAPPlatformOTAClose(const HAPPlatformOTAContext *otaContext)
 {
+    /* Do nothing if file descriptor is invalid. */
+    if (otaContext->fileDescriptor < 0)
+        return kHAPError_None;
+    
     HAPLogInfo(&logObject, "Authenticating and closing file.");
     int16_t retval = sl_FsClose(otaContext->fileDescriptor,
                                 otaContext->certFilePath,
-                                otaContext->signature,
+                                &otaContext->signature[0],
                                 (uint32_t)(otaContext->signatureSize));
     switch (retval) {
     case 0L:
@@ -242,8 +268,10 @@ HAPError HAPPlatformOTAClose(const HAPPlatformOTAContext *otaContext)
     case SL_ERROR_FS_ILLEGAL_SIGNATURE:
     case SL_ERROR_FS_WRONG_CERTIFICATE_FILE_NAME:
     case SL_ERROR_FS_NO_CERTIFICATE_STORE:
+        HAPLogError(&logObject, "Failed to close file (%d).", retval);
         return kHAPError_NotAuthorized;
     default:
+        HAPLogError(&logObject, "Failed to close file (%d).", retval);
         return kHAPError_Unknown;
     }
 }

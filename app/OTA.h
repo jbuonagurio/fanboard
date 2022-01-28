@@ -7,16 +7,16 @@
 
 #pragma once
 
+#include "HTTPServer.h"
+
 #include <ti/drivers/net/wifi/netapp.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void HTTPRequestHandler(SlNetAppRequest_t *pNetAppRequest,
-                        SlNetAppResponse_t *pNetAppResponse);
-
-void HTTPTask(void *pvParameters);
+void OTAPutCallback(HTTPRequest *pRequest);
+void OTAGetCallback(HTTPRequest *pRequest);
 
 #ifdef __cplusplus
 }

@@ -1,7 +1,7 @@
 /*
  * FreeRTOS OTA PAL for CC3220SF-LAUNCHXL V2.0.0
  * Copyright (c) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
- * Copyright (c) 2021 John Buonagurio
+ * Copyright (c) 2022 John Buonagurio
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -37,6 +37,9 @@ extern "C" {
 #pragma clang assume_nonnull begin
 #endif
 
+/* Maximum allowed size of an MCU update image for this platform. */
+#define kHAPPlatformOTA_MaxImageSize (512UL * 1024UL)
+
 /**
  * OTA image state.
  */
@@ -64,11 +67,21 @@ HAP_ENUM_BEGIN(uint8_t, HAPPlatformOTAPALImageState) {
 typedef struct {
     uint8_t *filePath;           /*!< @brief Update file pathname. */
     int32_t fileDescriptor;      /*!< @brief File descriptor. */
-    uint32_t fileSize;           /*!< @brief The size of the file in bytes. */
+    uint32_t maxFileSize;        /*!< @brief The maximum size of the file in bytes. */
     uint8_t *certFilePath;       /*!< @brief Pathname of the certificate file used to validate the receive file. */
-    uint8_t *signature;          /*!< @brief Pointer to the file's signature. */
+    uint8_t signature[256];      /*!< @brief The file's signature. */
     uint32_t signatureSize;      /*!< @brief The size of the file's signature in bytes. */
 } HAPPlatformOTAContext;
+
+/**
+ * Abort an OTA transfer.
+ *
+ * @param[in]  otaContext           OTA file context information.
+ *
+ * @return kHAPError_None           If successful.
+ * @return kHAPError_Unknown        Other errors.
+ */
+HAPError HAPPlatformOTAAbort(HAPPlatformOTAContext *otaContext);
 
 /**
  * Create a new receive file for the data chunks as they come in.
@@ -91,7 +104,6 @@ HAPError HAPPlatformOTACreate(HAPPlatformOTAContext *otaContext);
  * @return kHAPError_NotAuthorized  If cryptographic signature verification fails.
  * @return kHAPError_Unknown        Other errors.
  */
-HAP_RESULT_USE_CHECK
 HAPError HAPPlatformOTAClose(const HAPPlatformOTAContext *otaContext);
 
 /**
@@ -104,6 +116,7 @@ HAPError HAPPlatformOTAClose(const HAPPlatformOTAContext *otaContext);
  *
  * @return The number of bytes written on success, or a negative error code.
  */
+HAP_RESULT_USE_CHECK
 int16_t HAPPlatformOTAWriteBlock(const HAPPlatformOTAContext *otaContext,
                                  uint32_t offset,
                                  uint8_t *bytes,
@@ -134,7 +147,6 @@ HAPError HAPPlatformOTAResetDevice(void);
  * @return kHAPError_None           If successful.
  * @return kHAPError_Unknown        If state could not be set.
  */
-HAP_RESULT_USE_CHECK
 HAPError HAPPlatformOTASetImageState(const HAPPlatformOTAContext *otaContext,
                                      HAPPlatformOTAImageState state);
 
@@ -145,7 +157,6 @@ HAPError HAPPlatformOTASetImageState(const HAPPlatformOTAContext *otaContext,
  *
  * @return A value of type HAPPlatformOTAPALImageState.
  */
-HAP_RESULT_USE_CHECK
 HAPPlatformOTAPALImageState HAPPlatformOTAGetImageState(const HAPPlatformOTAContext *otaContext);
 
 #if __has_feature(nullability)

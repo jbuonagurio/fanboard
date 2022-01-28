@@ -11,10 +11,11 @@
 #include "AppDomains.h"
 #include "Board.h"
 #include "DB.h"
-#include "HTTP.h"
+#include "HTTPServer.h"
 #include "NWPEvent.h"
 #include "UART.h"
 #include "Utilities.h"
+#include "Version.h"
 
 #include <HAP.h>
 #include <HAPLog.h>
@@ -22,6 +23,7 @@
 #include <HAPPlatformAccessorySetup+Init.h>
 #include <HAPPlatformKeyValueStore+Init.h>
 #include <HAPPlatformMFiTokenAuth+Init.h>
+#include <HAPPlatformOTA+Init.h>
 #include <HAPPlatformRunLoop+Init.h>
 #include <HAPPlatformServiceDiscovery+Init.h>
 #include <HAPPlatformSyslog+Init.h>
@@ -39,17 +41,14 @@
 #define kApp_HostTaskPriority (tskIDLE_PRIORITY + 1)
 #define kApp_HostTaskStackSize (1024) // 32K
 
-#define kApp_UARTTaskPriority (tskIDLE_PRIORITY + 2)
+#define kApp_HTTPTaskPriority (tskIDLE_PRIORITY + 2)
+#define kApp_HTTPTaskStackSize (2048) // 64K
+
+#define kApp_UARTTaskPriority (tskIDLE_PRIORITY + 3)
 #define kApp_UARTTaskStackSize (1024) // 32K
 
-#define kApp_MainTaskPriority (tskIDLE_PRIORITY + 3)
-#define kApp_MainTaskStackSize (2048) // 64K
-
-#define kApp_RunLoopPriority (tskIDLE_PRIORITY + 3)
-#define kApp_RunLoopStackSize (2048) // 64K
-
-#define kApp_HTTPTaskPriority (tskIDLE_PRIORITY + 4)
-#define kApp_HTTPTaskStackSize (1024) // 32K
+#define kApp_MainTaskPriority (tskIDLE_PRIORITY + 4)
+#define kApp_MainTaskStackSize (1024) // 32K
 
 // NWP stop timeout in milliseconds.
 #define kSimpleLink_StopTimeout (200)
@@ -67,10 +66,10 @@ static bool requestedFactoryReset = false;
 static bool clearPairings = false;
 
 // FreeRTOS handles.
-TaskHandle_t mainTaskHandle;
+TaskHandle_t hostTaskHandle;
 TaskHandle_t httpTaskHandle;
 TaskHandle_t uartTaskHandle;
-TaskHandle_t hostTaskHandle;
+TaskHandle_t mainTaskHandle;
 
 // Global platform objects.
 // Only tracks objects that will be released in DeinitializePlatform.
@@ -309,7 +308,9 @@ static void InitializeIP()
 void MainTask(void *pvParameters)
 {
     LED_Handle ledHandle = LED_open(BOARD_YELLOW_LED, NULL);
-    LED_startBlinking(ledHandle, 250, LED_BLINK_FOREVER);
+    LED_startBlinking(ledHandle, 150, LED_BLINK_FOREVER);
+
+    HAPLog(&kHAPLog_Default, "Version " APP_VERSION_STRING);
 
     StartNetworkProcessor();
 
@@ -332,10 +333,6 @@ void MainTask(void *pvParameters)
 
     InitializePlatform();
     InitializeIP();
-    
-    //PrintDeviceInfo();
-    //PrintStorageInfo();
-    //PrintFileList();
 
     // Perform Application-specific initializations such as setting up callbacks
     // and configure any additional unique platform dependencies.
@@ -354,6 +351,11 @@ void MainTask(void *pvParameters)
 
     LED_stopBlinking(ledHandle);
 
+    // Image should be operational at this point. If we have an OTA image pending
+    // commit, stop the watchdog timer and accept.
+    if (HAPPlatformOTAGetImageState(NULL) == kHAPPlatformOTAPALImageState_PendingCommit)
+        HAPPlatformOTASetImageState(NULL, kHAPPlatformOTAImageState_Accepted);
+
     // Run main loop until explicitly stopped.
     HAPPlatformRunLoopRun();
 
@@ -364,13 +366,26 @@ void MainTask(void *pvParameters)
 }
 
 //----------------------------------------------------------------------------------------------------------------------
+// FreeRTOS hooks.
+//----------------------------------------------------------------------------------------------------------------------
+
+void vApplicationMallocFailedHook(void)
+{
+    HAPLogFault(&kHAPLog_Default, "pvPortMalloc failed (%u bytes free).", xPortGetFreeHeapSize());
+}
+
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+{
+    while (1) {}
+}
+
+//----------------------------------------------------------------------------------------------------------------------
 // Application entry point.
 //----------------------------------------------------------------------------------------------------------------------
 
 int main(void)
 {
     BaseType_t rc;
-    
     Board_init();
     
     // Enable SEGGER SystemView.
@@ -402,13 +417,13 @@ int main(void)
         HAPFatalError();
     }
 
-    // Create the HTTP task.
+    // Create the HTTP server task.
     rc = xTaskCreate((TaskFunction_t)HTTPTask, // pvTaskCode
                      "HTTP",                   // pcName
                      kApp_HTTPTaskStackSize,   // usStackDepth
                      NULL,                     // pvParameters
                      kApp_HTTPTaskPriority,    // uxPriority
-                     &uartTaskHandle);         // pxCreatedTask
+                     &httpTaskHandle);         // pxCreatedTask
 
     if (rc != pdPASS) {
         HAPLogFault(&kHAPLog_Default, "Failed to create HTTP task.");

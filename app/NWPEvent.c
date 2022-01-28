@@ -6,7 +6,7 @@
 //  http://www.boost.org/LICENSE_1_0.txt
 
 #include "NWPEvent.h"
-#include "HTTP.h"
+#include "HTTPServer.h"
 
 #include <stdint.h>
 
