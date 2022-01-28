@@ -164,7 +164,7 @@ HAPError HAPPlatformKeyValueStoreSet(
 
     // Write the KVS file.
     int32_t handle = sl_FsOpen((unsigned char *)filePath,
-        SL_FS_CREATE | SL_FS_OVERWRITE | SL_FS_CREATE_MAX_SIZE(numBytes), NULL); // SL_FS_CREATE_FAILSAFE?
+        SL_FS_CREATE | SL_FS_CREATE_FAILSAFE | SL_FS_OVERWRITE | SL_FS_CREATE_MAX_SIZE(numBytes), NULL);
     if (handle < 0) {
         HAPLogError(&logObject, "sl_FsOpen %s failed: %ld.", filePath, handle);
         return kHAPError_Unknown;
