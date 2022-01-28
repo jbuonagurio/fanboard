@@ -78,7 +78,7 @@ HAPNetworkPort HAPPlatformTCPStreamManagerGetListenerPort(HAPPlatformTCPStreamMa
  */
 static HAPError SetNonblocking(int sd)
 {
-    int v = 1;
+    SlNetSock_Nonblocking_t v = { .nonBlockingEnabled = 1 };
     HAPLogBufferDebug(&logObject, &v, sizeof v, "setsockopt(%d, SOL_SOCKET, SO_NONBLOCKING, <buffer>);", sd);
     int e = SlNetSock_setOpt((int16_t)sd, SLNETSOCK_LVL_SOCKET, SLNETSOCK_OPSOCK_NON_BLOCKING, &v, sizeof v);
     if (e != 0) {
@@ -101,10 +101,10 @@ static HAPError SetNonblocking(int sd)
  */
 static HAPError SetNodelay(int sd)
 {
-    int v = 1;
+    SlNetSock_NoDelay_t v = { .noDelayEnabled = 1 };
     HAPLogBufferDebug(&logObject, &v, sizeof v, "setsockopt(%d, IPPROTO_TCP, TCP_NODELAY, <buffer>);", sd);
     int e = SlNetSock_setOpt((int16_t)sd, SLNETSOCK_PROTO_TCP, SLNETSOCK_TCP_NODELAY, &v, sizeof v);
-    if (e != 0) {
+    if (e != 0 && e != SLNETERR_BSD_EINVAL) {
         ErrnoUtil_set(e);
         HAPPlatformLogPOSIXError(kHAPLogType_Error,
                                  "System call 'setsockopt' to set socket options to 'TCP_NODELAY' failed.",
@@ -232,7 +232,7 @@ void HAPPlatformTCPStreamManagerOpenListener(HAPPlatformTCPStreamManagerRef tcpS
     int v = 1;
     HAPLogBufferDebug(&logObject, &v, sizeof v, "setsockopt(%d, SOL_SOCKET, SO_REUSEADDR, <buffer>);", fileDescriptor);
     e = SlNetSock_setOpt((int16_t)fileDescriptor, SLNETSOCK_LVL_SOCKET, SLNETSOCK_OPSOCK_REUSEADDR, &v, sizeof v);
-    if (e != 0) {
+    if (e != 0 && e != SLNETERR_BSD_ENOPROTOOPT) {
         ErrnoUtil_set(e);
         HAPPlatformLogPOSIXError(kHAPLogType_Error,
                                  "System call 'setsockopt' with option 'SO_REUSEADDR' on TCP stream listener socket failed.",
@@ -328,9 +328,9 @@ void HAPPlatformTCPStreamManagerCloseListener(HAPPlatformTCPStreamManagerRef tcp
 
     HAPLogDebug(&logObject, "shutdown(%d, SHUT_RDWR);", tcpStreamManager->tcpStreamListener.fileDescriptor);
     e = (int)SlNetSock_shutdown((uint16_t)tcpStreamManager->tcpStreamListener.fileDescriptor, (uint16_t)SLNETSOCK_SHUT_RDWR);
-    if (e != 0) {
+    if (e != 0 && e != SLNETERR_RET_CODE_DOESNT_SUPPORT_NON_MANDATORY_FXN) {
         ErrnoUtil_set(e);
-        HAPPlatformLogPOSIXError(kHAPLogType_Debug,
+        HAPPlatformLogPOSIXError(kHAPLogType_Error,
                                  "System call 'shutdown' on TCP stream listener socket failed.",
                                  errno, __func__, HAP_FILE, __LINE__);
     }
@@ -339,7 +339,7 @@ void HAPPlatformTCPStreamManagerCloseListener(HAPPlatformTCPStreamManagerRef tcp
     e = (int)SlNetSock_close((int16_t)tcpStreamManager->tcpStreamListener.fileDescriptor);
     if (e != 0) {
         ErrnoUtil_set(e);
-        HAPPlatformLogPOSIXError(kHAPLogType_Debug,
+        HAPPlatformLogPOSIXError(kHAPLogType_Error,
                                  "System call 'close' on TCP stream listener socket failed.",
                                  errno, __func__, HAP_FILE, __LINE__);
     }
@@ -464,7 +464,7 @@ void HAPPlatformTCPStreamCloseOutput(HAPPlatformTCPStreamManagerRef tcpStreamMan
 
     HAPLogDebug(&logObject, "shutdown(%d, SHUT_WR);", tcpStream->fileDescriptor);
     int e = (int)SlNetSock_shutdown((uint16_t)tcpStream->fileDescriptor, (uint16_t)SLNETSOCK_SHUT_WR);
-    if (e != 0) {
+    if (e != 0 && e != SLNETERR_RET_CODE_DOESNT_SUPPORT_NON_MANDATORY_FXN) {
         ErrnoUtil_set(e);
         HAPPlatformLogPOSIXError(kHAPLogType_Error,
                                  "System call 'shutdown' on TCP stream listener socket failed.",
@@ -491,7 +491,7 @@ void HAPPlatformTCPStreamClose(HAPPlatformTCPStreamManagerRef tcpStreamManager, 
 
     HAPLogDebug(&logObject, "shutdown(%d, SHUT_RDWR);", tcpStream->fileDescriptor);
     e = (int)SlNetSock_shutdown((uint16_t)tcpStream->fileDescriptor, (uint16_t)SLNETSOCK_SHUT_RDWR);
-    if (e != 0) {
+    if (e != 0 && e != SLNETERR_RET_CODE_DOESNT_SUPPORT_NON_MANDATORY_FXN) {
         ErrnoUtil_set(e);
         HAPPlatformLogPOSIXError(kHAPLogType_Error,
                                  "System call 'shutdown' on TCP stream socket failed.",
@@ -593,7 +593,7 @@ HAPError HAPPlatformTCPStreamRead(HAPPlatformTCPStreamManagerRef tcpStreamManage
     } while ((n == -1) && (errno == EINTR));
     if (n == -1) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            HAPPlatformLogPOSIXError(kHAPLogType_Default,
+            HAPPlatformLogPOSIXError(kHAPLogType_Error,
                                      "System call 'recv' on TCP stream socket failed.",
                                      errno, __func__, HAP_FILE, __LINE__);
             *numBytes = 0;
@@ -637,7 +637,7 @@ HAPError HAPPlatformTCPStreamWrite(HAPPlatformTCPStreamManagerRef tcpStreamManag
     } while ((n == -1) && (errno == EINTR));
     if (n == -1) {
         if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
-            HAPPlatformLogPOSIXError(kHAPLogType_Default,
+            HAPPlatformLogPOSIXError(kHAPLogType_Error,
                                      "System call 'send' on TCP stream socket failed.",
                                      errno, __func__, HAP_FILE, __LINE__);
             *numBytes = 0;
