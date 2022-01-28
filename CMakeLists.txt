@@ -394,7 +394,7 @@ target_link_libraries(homekitadk PUBLIC
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(homekitadk PUBLIC
         -DHAP_LOG_LEVEL=3
-        -DHAP_LOG_SENSITIVE=1
+        -DHAP_LOG_SENSITIVE=0
         -DHAP_LOG_REMOTE=0
         -DHAP_DISABLE_ASSERTS=0
         -DHAP_DISABLE_PRECONDITIONS=0)
