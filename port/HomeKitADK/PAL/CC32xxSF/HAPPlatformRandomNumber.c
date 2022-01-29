@@ -6,10 +6,10 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of HomeKit ADK project authors.
 
-#include "mbedtls/config.h"
-#include "mbedtls/platform.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
+#include <mbedtls/config.h>
+#include <mbedtls/platform.h>
+#include <mbedtls/entropy.h>
+#include <mbedtls/ctr_drbg.h>
 
 #include "HAPPlatform.h"
 
