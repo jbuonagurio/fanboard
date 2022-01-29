@@ -41,14 +41,14 @@
 #define kApp_HostTaskPriority (tskIDLE_PRIORITY + 1)
 #define kApp_HostTaskStackSize (1024) // 32K
 
-#define kApp_HTTPTaskPriority (tskIDLE_PRIORITY + 2)
-#define kApp_HTTPTaskStackSize (2048) // 64K
+#define kApp_MainTaskPriority (tskIDLE_PRIORITY + 2)
+#define kApp_MainTaskStackSize (2048) // 64K
 
 #define kApp_UARTTaskPriority (tskIDLE_PRIORITY + 3)
 #define kApp_UARTTaskStackSize (1024) // 32K
 
-#define kApp_MainTaskPriority (tskIDLE_PRIORITY + 4)
-#define kApp_MainTaskStackSize (1024) // 32K
+#define kApp_HTTPTaskPriority (tskIDLE_PRIORITY + 4)
+#define kApp_HTTPTaskStackSize (2048) // 64K
 
 // NWP stop timeout in milliseconds.
 #define kSimpleLink_StopTimeout (200)
@@ -67,12 +67,11 @@ static bool clearPairings = false;
 
 // FreeRTOS handles.
 TaskHandle_t hostTaskHandle;
-TaskHandle_t httpTaskHandle;
-TaskHandle_t uartTaskHandle;
 TaskHandle_t mainTaskHandle;
+TaskHandle_t uartTaskHandle;
+TaskHandle_t httpTaskHandle;
 
 // Global platform objects.
-// Only tracks objects that will be released in DeinitializePlatform.
 static struct {
     HAPPlatformKeyValueStore keyValueStore;
     HAPAccessoryServerOptions hapAccessoryServerOptions;
@@ -84,8 +83,6 @@ static struct {
 
 static HAPPlatformAccessorySetup accessorySetup;
 static HAPPlatformServiceDiscovery serviceDiscovery;
-
-// HomeKit accessory server that hosts the accessory.
 static HAPAccessoryServerRef accessoryServer;
 
 void HandleUpdatedState(HAPAccessoryServerRef *_Nonnull server, void *_Nullable context);
@@ -122,15 +119,8 @@ static void StartNetworkProcessor()
     }
 }
 
-// Stop the SimpleLink Network Processor (NWP).
-static void StopNetworkProcessor()
-{
-    HAPLogInfo(&kHAPLog_Default, "Stopping NWP.");
-    sl_Stop(kSimpleLink_StopTimeout);
-}
-
 // Initialize global platform objects.
-static void InitializePlatform()
+static void PlatformInitialize()
 {
     // Syslog.
     HAPPlatformSyslogInitialize(
@@ -159,117 +149,16 @@ static void InitializePlatform()
     // Software Token provider. Depends on key-value store.
     HAPPlatformMFiTokenAuthCreate(&platform.mfiTokenAuth,
         &(const HAPPlatformMFiTokenAuthOptions){ .keyValueStore = &platform.keyValueStore });
-
+    platform.hapPlatform.authentication.mfiTokenAuth =
+        HAPPlatformMFiTokenAuthIsProvisioned(&platform.mfiTokenAuth) ? &platform.mfiTokenAuth : NULL;
+    
     // Run loop.
     HAPPlatformRunLoopCreate(&(const HAPPlatformRunLoopOptions){ .keyValueStore = &platform.keyValueStore });
 
+    // Accessory server.
     platform.hapAccessoryServerOptions.maxPairings = kHAPPairingStorage_MinElements;
-    platform.hapPlatform.authentication.mfiTokenAuth =
-        HAPPlatformMFiTokenAuthIsProvisioned(&platform.mfiTokenAuth) ? &platform.mfiTokenAuth : NULL;
     platform.hapAccessoryServerCallbacks.handleUpdatedState = HandleUpdatedState;
-}
 
-// Deinitialize global platform objects.
-static void DeinitializePlatform()
-{
-    HAPPlatformTCPStreamManagerRelease(&platform.tcpStreamManager);
-    AppDeinitialize();
-    HAPPlatformRunLoopRelease();
-    StopNetworkProcessor();
-}
-
-// Restore platform specific factory settings.
-void RestorePlatformFactorySettings(void)
-{
-    // Ensure NWP is in station mode.
-    sl_Start(NULL, NULL, NULL);
-    sl_WlanSetMode(ROLE_STA);
-    sl_Stop(kSimpleLink_StopTimeout);
-    sl_Start(NULL, NULL, NULL);
-
-    // Restore WLAN defaults.
-    sl_WlanSet(SL_WLAN_CFG_GENERAL_PARAM_ID, SL_WLAN_GENERAL_PARAM_OPT_COUNTRY_CODE, 2, (unsigned char *)"US");
-    sl_WlanPolicySet(SL_WLAN_POLICY_CONNECTION, SL_WLAN_CONNECTION_POLICY(1,1,0,0), NULL, 0); // Auto, Fast
-    sl_WlanProvisioning(SL_WLAN_PROVISIONING_CMD_STOP, 0xFF, 0, NULL, 0x0);
-    sl_NetCfgSet(SL_NETCFG_IPV4_STA_ADDR_MODE, SL_NETCFG_ADDR_DHCP, 0, NULL);
-    sl_WlanPolicySet(SL_WLAN_POLICY_PM, SL_WLAN_NORMAL_POLICY, NULL, 0);
-
-    // Remove stored profiles.
-    sl_WlanProfileDel(SL_WLAN_DEL_ALL_PROFILES);
-
-    // Add the default connection profile.
-    const char *ssid = SSID_NAME;
-    const char *securityKey = SECURITY_KEY;
-    const SlWlanSecParams_t securityParams = {
-        .Key = (signed char *)securityKey,
-        .KeyLen = strlen(securityKey),
-        .Type = SL_WLAN_SEC_TYPE_WPA_WPA2 };
-    sl_WlanProfileAdd((signed char *)ssid, strlen(ssid), 0, &securityParams, NULL, 7, 0);
-
-    // Restore NetApp defaults.
-    const char *urn = "simplelink";
-    sl_NetAppSet(SL_NETAPP_DEVICE_ID, SL_NETAPP_DEVICE_URN, strlen(urn), (uint8_t *)urn);
-
-    // Flush the DNS cache.
-    sl_NetAppSet(SL_NETAPP_DNS_CLIENT_ID, SL_NETAPP_DNS_CLIENT_CACHE_CLEAR, 0, NULL);
-
-    // Restart the NWP.
-    sl_Stop(kSimpleLink_StopTimeout);
-    sl_Start(NULL, NULL, NULL);
-}
-
-// Either simply passes State handling to app, or processes Factory Reset
-void HandleUpdatedState(HAPAccessoryServerRef *_Nonnull server, void *_Nullable context)
-{
-    if (HAPAccessoryServerGetState(server) == kHAPAccessoryServerState_Idle && requestedFactoryReset) {
-        HAPPrecondition(server);
-
-        HAPError err;
-
-        HAPLogInfo(&kHAPLog_Default, "A factory reset has been requested.");
-
-        // Purge app state.
-        err = HAPPlatformKeyValueStorePurgeDomain(&platform.keyValueStore, kAppKeyValueStoreDomain_Configuration);
-        if (err) {
-            HAPAssert(err == kHAPError_Unknown);
-            HAPFatalError();
-        }
-
-        // Reset HomeKit state.
-        // .homekitstore/90.10: Configuration_FirmwareVersion
-        // .homekitstore/90.21: Configuration_LTSK
-        // .homekitstore/90.20: Configuration_ConfigurationNumber
-        // .homekitstore/a0.*:  Pairings
-        err = HAPRestoreFactorySettings(&platform.keyValueStore);
-        if (err) {
-            HAPAssert(err == kHAPError_Unknown);
-            HAPFatalError();
-        }
-
-        // Restore platform specific factory settings.
-        RestorePlatformFactorySettings();
-        AppRelease();
-        requestedFactoryReset = false;
-        AppCreate(server, &platform.keyValueStore);
-        AppAccessoryServerStart();
-        return;
-    }
-    else if (HAPAccessoryServerGetState(server) == kHAPAccessoryServerState_Idle && clearPairings) {
-        HAPError err;
-        err = HAPRemoveAllPairings(&platform.keyValueStore);
-        if (err) {
-            HAPAssert(err == kHAPError_Unknown);
-            HAPFatalError();
-        }
-        AppAccessoryServerStart();
-    } else {
-        AccessoryServerHandleUpdatedState(server, context);
-    }
-}
-
-static void InitializeIP()
-{
-    // Prepare accessory server storage.
     static HAPIPSession ipSessions[kHAPIPSessionStorage_NumElements];
     static uint8_t ipInboundBuffers[HAPArrayCount(ipSessions)][kHAPIPSession_InboundBufferSize];
     static uint8_t ipOutboundBuffers[HAPArrayCount(ipSessions)][kHAPIPSession_OutboundBufferSize];
@@ -301,6 +190,107 @@ static void InitializeIP()
     platform.hapPlatform.ip.tcpStreamManager = &platform.tcpStreamManager;
 }
 
+// Deinitialize global platform objects.
+static void PlatformDeinitialize()
+{
+    HAPPlatformTCPStreamManagerRelease(&platform.tcpStreamManager);
+    HAPPlatformRunLoopRelease();
+}
+
+// Restore platform specific factory settings.
+void PlatformRestoreFactorySettings(void)
+{
+    // Ensure NWP is in station mode.
+    sl_Start(NULL, NULL, NULL);
+    sl_WlanSetMode(ROLE_STA);
+    sl_Stop(kSimpleLink_StopTimeout);
+    sl_Start(NULL, NULL, NULL);
+
+    // Restore WLAN defaults.
+    sl_WlanSet(SL_WLAN_CFG_GENERAL_PARAM_ID, SL_WLAN_GENERAL_PARAM_OPT_COUNTRY_CODE, 2, (unsigned char *)"US");
+    sl_WlanPolicySet(SL_WLAN_POLICY_CONNECTION, SL_WLAN_CONNECTION_POLICY(1,1,0,0), NULL, 0); // Auto, Fast
+    sl_WlanProvisioning(SL_WLAN_PROVISIONING_CMD_STOP, 0xFF, 0, NULL, 0x0);
+    sl_NetCfgSet(SL_NETCFG_IPV4_STA_ADDR_MODE, SL_NETCFG_ADDR_DHCP, 0, NULL);
+    sl_WlanPolicySet(SL_WLAN_POLICY_PM, SL_WLAN_NORMAL_POLICY, NULL, 0);
+
+    // Remove stored profiles.
+    sl_WlanProfileDel(SL_WLAN_DEL_ALL_PROFILES);
+
+    // Add default connection profiles. WLAN macros are defined in config.h.
+    sl_WlanProfileAdd((const signed char *)WLAN0_SSID, strlen(WLAN0_SSID), NULL,
+                      &(const SlWlanSecParams_t) {
+                          .Key = (signed char *)WLAN0_KEY,
+                          .KeyLen = strlen(WLAN0_KEY),
+                          .Type = SL_WLAN_SEC_TYPE_WPA_WPA2
+                      }, NULL, 0, 0);
+    
+    sl_WlanProfileAdd((const signed char *)WLAN1_SSID, strlen(WLAN1_SSID), NULL,
+                      &(const SlWlanSecParams_t) {
+                          .Key = (signed char *)WLAN1_KEY,
+                          .KeyLen = strlen(WLAN1_KEY),
+                          .Type = SL_WLAN_SEC_TYPE_WPA_WPA2
+                      }, NULL, 1, 0);
+    
+    // Restore NetApp defaults.
+    const char *urn = "simplelink";
+    sl_NetAppSet(SL_NETAPP_DEVICE_ID, SL_NETAPP_DEVICE_URN, strlen(urn), (uint8_t *)urn);
+
+    // Flush the DNS cache.
+    sl_NetAppSet(SL_NETAPP_DNS_CLIENT_ID, SL_NETAPP_DNS_CLIENT_CACHE_CLEAR, 0, NULL);
+
+    // Restart the NWP.
+    sl_Stop(kSimpleLink_StopTimeout);
+    sl_Start(NULL, NULL, NULL);
+}
+
+// Either simply passes State handling to app, or processes Factory Reset
+void HandleUpdatedState(HAPAccessoryServerRef *_Nonnull server, void *_Nullable context)
+{
+    HAPError err;
+
+    if (HAPAccessoryServerGetState(server) == kHAPAccessoryServerState_Idle && requestedFactoryReset) {
+        HAPPrecondition(server);
+        HAPLogInfo(&kHAPLog_Default, "A factory reset has been requested.");
+
+        // Purge app state.
+        err = HAPPlatformKeyValueStorePurgeDomain(&platform.keyValueStore, kAppKeyValueStoreDomain_Configuration);
+        if (err) {
+            HAPAssert(err == kHAPError_Unknown);
+            HAPFatalError();
+        }
+
+        // Reset HomeKit state.
+        // .homekitstore/90.10: Configuration_FirmwareVersion
+        // .homekitstore/90.21: Configuration_LTSK
+        // .homekitstore/90.20: Configuration_ConfigurationNumber
+        // .homekitstore/a0.*:  Pairings
+        err = HAPRestoreFactorySettings(&platform.keyValueStore);
+        if (err) {
+            HAPAssert(err == kHAPError_Unknown);
+            HAPFatalError();
+        }
+
+        // Restore platform specific factory settings.
+        PlatformRestoreFactorySettings();
+        AppRelease();
+        requestedFactoryReset = false;
+        AppCreate(server, &platform.keyValueStore);
+        AppAccessoryServerStart();
+        return;
+    }
+    else if (HAPAccessoryServerGetState(server) == kHAPAccessoryServerState_Idle && clearPairings) {
+        HAPLogInfo(&kHAPLog_Default, "Removing pairings.");
+        err = HAPRemoveAllPairings(&platform.keyValueStore);
+        if (err) {
+            HAPAssert(err == kHAPError_Unknown);
+            HAPFatalError();
+        }
+        AppAccessoryServerStart();
+    } else {
+        AccessoryServerHandleUpdatedState(server, context);
+    }
+}
+
 //----------------------------------------------------------------------------------------------------------------------
 // Main task.
 //----------------------------------------------------------------------------------------------------------------------
@@ -310,29 +300,19 @@ void MainTask(void *pvParameters)
     LED_Handle ledHandle = LED_open(BOARD_YELLOW_LED, NULL);
     LED_startBlinking(ledHandle, 150, LED_BLINK_FOREVER);
 
-    HAPLog(&kHAPLog_Default, "Version " APP_VERSION_STRING);
-
     StartNetworkProcessor();
 
     // Wait for DHCP acquire.
     for (;;) {
-        uint32_t status = 0;
-        BaseType_t xResult = xTaskNotifyWaitIndexed(0,              // ulIndexToWaitOn
-                                                    0x00,           // ulBitsToClearOnEntry
-                                                    ULONG_MAX,      // ulBitsToClearOnExit
-                                                    &status,        // pulNotificationValue
-                                                    portMAX_DELAY); // xTicksToWait
-        
-        // Process notifications from SimpleLink event handlers.
-        if (xResult == pdPASS) {
-            if ((status & kApplicationEvent_IPAcquired) != 0) {
+        uint32_t notificationValue = 0;
+        if (xTaskNotifyWaitIndexed(0, 0x00, ULONG_MAX, &notificationValue, portMAX_DELAY) == pdPASS) {
+            if ((notificationValue & kHAPPlatformEvent_IPAcquired) != 0) {
                 break;
             }
         }
     }
-
-    InitializePlatform();
-    InitializeIP();
+    
+    PlatformInitialize();
 
     // Perform Application-specific initializations such as setting up callbacks
     // and configure any additional unique platform dependencies.
@@ -349,20 +329,34 @@ void MainTask(void *pvParameters)
     AppCreate(&accessoryServer, &platform.keyValueStore);
     AppAccessoryServerStart();
 
-    LED_stopBlinking(ledHandle);
-
     // Image should be operational at this point. If we have an OTA image pending
     // commit, stop the watchdog timer and accept.
-    if (HAPPlatformOTAGetImageState(NULL) == kHAPPlatformOTAPALImageState_PendingCommit)
+    switch (HAPPlatformOTAGetImageState(NULL)) {
+    case kHAPPlatformOTAPALImageState_PendingCommit:
         HAPPlatformOTASetImageState(NULL, kHAPPlatformOTAImageState_Accepted);
+        break;
+    default:
+        break;
+    }
+
+    LED_stopBlinking(ledHandle);
 
     // Run main loop until explicitly stopped.
     HAPPlatformRunLoopRun();
 
+    // Run loop stopped. Suspend the UART task.
+    vTaskSuspend(uartTaskHandle);
+
     // Cleanup.
+    AppAccessoryServerStop();
     AppRelease();
-    HAPAccessoryServerRelease(&accessoryServer);
-    DeinitializePlatform();
+    AppDeinitialize();
+    PlatformDeinitialize();
+
+    // Unblock the HTTP task for OTA.
+    xTaskNotifyGive(httpTaskHandle);
+
+    vTaskSuspend(NULL);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
