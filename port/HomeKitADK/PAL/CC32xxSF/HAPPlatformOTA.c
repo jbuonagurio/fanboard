@@ -104,6 +104,17 @@ static void RollbackRxFile(HAPPlatformOTAContext *otaContext)
     }
 }
 
+static void DeleteRxFile(HAPPlatformOTAContext *otaContext)
+{
+    int32_t retval = sl_FsDel((uint8_t *)otaContext->filePath, kOTA_VendorToken);
+    if (retval != 0) {
+        HAPLogError(&logObject, "File %s delete failed (%ld).", otaContext->filePath, retval);
+    }
+    else {
+        HAPLogInfo(&logObject, "File %s deleted.", otaContext->filePath);
+    }
+}
+
 static int32_t CreateBootInfoFile(void)
 {
     uint32_t token = kOTA_VendorToken;
@@ -214,6 +225,10 @@ HAPError HAPPlatformOTACreate(HAPPlatformOTAContext *otaContext)
                         if (HAPPlatformOTAResetDevice() != kHAPError_None) {
                             HAPLogError(&logObject, "Failed to reset the device via software.");
                         }
+                    }
+                    else if (retval == SL_ERROR_FS_FILE_HAS_NOT_BEEN_CLOSE_CORRECTLY) {
+                        /* Attempt to delete the invalid receive file and try again. */
+                        DeleteRxFile(otaContext);
                     }
                     else if (retval == SL_ERROR_FS_FILE_IS_PENDING_COMMIT) {
                         /* Attempt to rollback the receive file and try again. */
@@ -391,10 +406,7 @@ HAPPlatformOTAPALImageState HAPPlatformOTAGetImageState(const HAPPlatformOTACont
 
     SlFsFileInfo_t fileInfo;
     int32_t rc = sl_FsGetInfo((const uint8_t *)"/sys/mcuflashimg.bin", kOTA_VendorToken, &fileInfo);
-    if (rc == SL_ERROR_FS_FILE_NOT_EXISTS) {
-        return kHAPPlatformOTAPALImageState_Unknown;
-    }
-    else if (rc == 0) {
+    if (rc == 0) {
         HAPLogDebug(&logObject, "Current platform image flags: %04x.", fileInfo.Flags);
         if ((fileInfo.Flags & (uint16_t)SL_FS_INFO_PENDING_BUNDLE_COMMIT) != 0U) {
             HAPLogDebug(&logObject, "Current platform image state: kHAPPlatformOTAPALImageState_PendingCommit.");
@@ -408,6 +420,14 @@ HAPPlatformOTAPALImageState HAPPlatformOTAGetImageState(const HAPPlatformOTACont
             HAPLogDebug(&logObject, "Current platform image state: kHAPPlatformOTAPALImageState_Invalid.");
             return kHAPPlatformOTAPALImageState_Invalid;
         }
+    }
+    else if (rc == SL_ERROR_FS_FILE_NOT_EXISTS) {
+        HAPLogDebug(&logObject, "Current platform image state: kHAPPlatformOTAPALImageState_Unknown.");
+        return kHAPPlatformOTAPALImageState_Unknown;
+    }
+    else if (rc == SL_ERROR_FS_FILE_HAS_NOT_BEEN_CLOSE_CORRECTLY) {
+        HAPLogDebug(&logObject, "Current platform image state: kHAPPlatformOTAPALImageState_Invalid.");
+        return kHAPPlatformOTAPALImageState_Invalid;
     }
     else {
         HAPLogError(&logObject, "sl_FsGetInfo failed (%ld) on /sys/mcuflashimg.bin.", (int32_t)rc);
