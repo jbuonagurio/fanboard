@@ -14,7 +14,7 @@
             "interface": "swd",
             "serialNumber": "",
             "runToEntryPoint": "resetISR",
-            "showDevDebugOutput": false,
+            "showDevDebugOutput": "none",
             "svdFile": "${workspaceRoot}/svd/CC32xxSF.svd",
             "rttConfig": {
                 "enabled": false,
@@ -44,7 +44,7 @@
             "searchDir": [ "/usr/local/share/open-ocd/scripts" ],
             "configFiles": [ "board/ti_cc3220sf_launchpad.cfg" ],
             "runToEntryPoint": "resetISR",
-            "showDevDebugOutput": false,
+            "showDevDebugOutput": "none",
             "svdFile": "${workspaceRoot}/svd/CC32xxSF.svd"
         }
     ]
