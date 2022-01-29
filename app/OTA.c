@@ -14,12 +14,16 @@
 
 #include <ti/drivers/net/wifi/netapp.h>
 
-#include <HAPPlatform.h>
+#include <HAPPlatform+Init.h>
 #include <HAPPlatformOTA+Init.h>
+#include <HAPPlatformRunLoop+Init.h>
+
+#include <FreeRTOS.h>
+#include <semphr.h>
+#include <task.h>
 
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "OTA" };
 
-// OTA context.
 static HAPPlatformOTAContext otaContext;
 
 HAP_ENUM_BEGIN(uint8_t, PartDataType) {
@@ -119,26 +123,49 @@ static int OnHeadersCompleteCallback(multipartparser *p)
     return 0;
 }
 
+static void SendHTTPRequestResponse(uint16_t requestHandle, int16_t responseCode)
+{
+    sl_NetAppSend(requestHandle,
+                  sizeof(HTTPStatusResponse),
+                  (uint8_t *)(&(const HTTPStatusResponse) {
+                      .headerType = SL_NETAPP_REQUEST_METADATA_TYPE_STATUS,
+                      .headerLen = 2,
+                      .responseCode = responseCode
+                  }),
+                  SL_NETAPP_REQUEST_RESPONSE_FLAGS_METADATA);
+}
+
+static bool ExtractBoundary(const char *contentType, char *buffer, size_t bufferSize)
+{
+    if (!contentType) {
+        HAPLogError(&logObject, "Missing Content-Type.");
+        return false;
+    }
+
+    char *start = strstr(contentType, "boundary=") + 9;
+    if (!start) {
+        HAPLogError(&logObject, "Invalid Content-Type.");
+        return false;
+    }
+
+    strncpy(buffer, start, bufferSize);
+    return true;
+}
+
 void OTAPutCallback(HTTPRequest *pRequest)
 {
     HAPLogDebug(&logObject, "%s", __func__);
 
-    int16_t responseCode = SL_NETAPP_HTTP_RESPONSE_201_CREATED;
-
     // Extract boundary string for multipart/form-data.
-    char boundary[70 + 1] = {0};
-    if (!pRequest->contentType) {
-        HAPLogError(&logObject, "Missing Content-Type.");
+    static char boundary[70 + 1];
+    HAPRawBufferZero(boundary, sizeof(boundary));
+    if (!ExtractBoundary(pRequest->contentType, boundary, 70))
         return;
-    }
-
-    char *boundaryPos = strstr(pRequest->contentType, "boundary=") + 9;
-    if (!boundaryPos) {
-        HAPLogError(&logObject, "Invalid Content-Type.");
-        return;
-    }
-
-    strncpy(boundary, boundaryPos, 70);
+    
+    // Stop the run loop and block until notification from main task.
+    HAPPlatformRunLoopRequestStop();
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    HAPLogInfo(&logObject, "Starting OTA.");
 
     // Initialize the OTA context.
     static const char *filePath = "/sys/mcuflashimg.bin";
@@ -151,7 +178,9 @@ void OTAPutCallback(HTTPRequest *pRequest)
     // Open file for write. This must be followed by a call to HAPPlatformOTAClose.
     if (HAPPlatformOTACreate(&otaContext) != kHAPError_None) {
         HAPPlatformOTAAbort(&otaContext);
-        responseCode = SL_NETAPP_HTTP_RESPONSE_500_INTERNAL_SERVER_ERROR;
+        SendHTTPRequestResponse(pRequest->requestHandle, SL_NETAPP_HTTP_RESPONSE_500_INTERNAL_SERVER_ERROR);
+        HAPPlatformOTAResetDevice();
+        return;
     }
     else {
         // Configure the parser for multipart/form-data.
@@ -178,45 +207,31 @@ void OTAPutCallback(HTTPRequest *pRequest)
             if (rc < 0) {
                 HAPLogError(&logObject, "sl_NetAppRecv failed: %d.", rc);
                 HAPPlatformOTAAbort(&otaContext);
-                responseCode = SL_NETAPP_HTTP_RESPONSE_500_INTERNAL_SERVER_ERROR;
-                break;
+                SendHTTPRequestResponse(pRequest->requestHandle, SL_NETAPP_HTTP_RESPONSE_500_INTERNAL_SERVER_ERROR);
+                HAPPlatformOTAResetDevice();
+                return;
             }
         
             multipartparser_execute(&parser, &callbacks, chunkBuffer, chunkSize);
         }
     }
 
-    HAPPlatformOTAClose(&otaContext);
-
     // Transfer complete.
+    SendHTTPRequestResponse(pRequest->requestHandle, SL_NETAPP_HTTP_RESPONSE_201_CREATED);
     HAPLogDebug(&logObject, "OTA File Size = %u", otaFileSize);
     HAPLogBufferDebug(&logObject, otaContext.signature, otaContext.signatureSize, "Signature");
-    sl_NetAppSend(pRequest->requestHandle,
-                  sizeof(HTTPStatusResponse),
-                  (uint8_t *)(&(const HTTPStatusResponse) {
-                      .headerType = SL_NETAPP_REQUEST_METADATA_TYPE_STATUS,
-                      .headerLen = 2,
-                      .responseCode = responseCode
-                  }),
-                  SL_NETAPP_REQUEST_RESPONSE_FLAGS_METADATA);
     
-    // 1. Reset the MCU to test the image.
-    // 2. Query the image state.
-    // 3. On success, commit the image.
-    // 4. On failure, reset or rollback the image.
+    // 1. Close the received file.
+    // 2. Reset the MCU to test the image.
+    // 3. Query the image state.
+    // 4. On success, commit the image.
+    // 5. On failure, reset or rollback the image.
+    HAPPlatformOTAClose(&otaContext);
     HAPPlatformOTAActivateNewImage(&otaContext);
 }
 
 void OTAGetCallback(HTTPRequest *pRequest)
 {
     HAPLogDebug(&logObject, "%s", __func__);
-
-    const HTTPStatusResponse metadata = { .headerType = SL_NETAPP_REQUEST_METADATA_TYPE_STATUS,
-                                          .headerLen = 2,
-                                          .responseCode = SL_NETAPP_HTTP_RESPONSE_204_OK_NO_CONTENT };
-    
-    sl_NetAppSend(pRequest->requestHandle,
-                  sizeof(HTTPStatusResponse),
-                  (uint8_t *)&metadata,
-                  SL_NETAPP_REQUEST_RESPONSE_FLAGS_METADATA);
+    SendHTTPRequestResponse(pRequest->requestHandle, SL_NETAPP_HTTP_RESPONSE_204_OK_NO_CONTENT);
 }
