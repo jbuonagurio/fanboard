@@ -25,6 +25,10 @@
     "cmake.configureOnOpen": true,
     "cmake.configureSettings": {
         "SIMPLELINK_CC32XX_SDK_DIR": "/Applications/TI/simplelink_cc32xx_sdk_5_30_00_08",
-        "CMAKE_VERBOSE_MAKEFILE": true
+        "CMAKE_VERBOSE_MAKEFILE": true,
+        "HAP_LOG_LEVEL": "Debug",
+        "HAP_LOG_REMOTE": false,
+        "HAP_LOG_SENSITIVE": false,
+        "ENABLE_SF_DEBUG": true
     }
 }

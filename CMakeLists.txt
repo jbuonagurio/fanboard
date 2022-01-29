@@ -31,8 +31,37 @@ set(SEGGER_DIR "${PROJECT_SOURCE_DIR}/external/SEGGER" CACHE PATH "Path to SEGGE
 set(MBEDTLS_DIR "${PROJECT_SOURCE_DIR}/external/mbedtls" CACHE PATH "Path to Mbed TLS")
 set(MULTIPART_PARSER_DIR "${PROJECT_SOURCE_DIR}/external/multipart-parser" CACHE PATH "Path to multipart-parser")
 
+# HAP_LOG_LEVEL:
+# 0: kHAPPlatformLogEnabledTypes_None
+# 1: kHAPPlatformLogEnabledTypes_Default
+# 2: kHAPPlatformLogEnabledTypes_Info
+# 3: kHAPPlatformLogEnabledTypes_Debug
+set(HAP_LOG_LEVEL Debug CACHE STRING "Logging level for HomeKit ADK")
+set(HAP_LOG_LEVEL_VALUES "None;Default;Info;Debug" CACHE INTERNAL "")
+set_property(CACHE HAP_LOG_LEVEL PROPERTY STRINGS ${HAP_LOG_LEVEL_VALUES})
+
+# Enable logging to a remote syslog server. This option must not be
+# used when J-Link might also do RTT.
+option(HAP_LOG_REMOTE "Enable syslog logging in HomeKit ADK" OFF)
+
+# Include sensitive information in logs.
+option(HAP_LOG_SENSITIVE "Enable sensitive information logging in HomeKit ADK" OFF)
+
+# __SF_DEBUG__ enables the .dbghdr section, which skips the integrity
+# check phase of booting and signals to the bootloader that it should
+# should not attempt an erase of the image. Production images must not
+# have a .dbghdr section. See SimpleLink Wi-Fi CC323x Technical
+# Reference Manual (SWRU543A), Section 21.10: Debugging Flash User
+# Application Using JTAG.
+option(ENABLE_SF_DEBUG "Enable the .dbghdr section" OFF)
+
 set(LINKER_SCRIPT "${PROJECT_SOURCE_DIR}/linker/cc32xxsf_freertos.lds")
 set(STARTUP_FILE "${PROJECT_SOURCE_DIR}/startup/startup_cc32xx_gcc.c")
+
+message(STATUS "HAP_LOG_LEVEL: ${HAP_LOG_LEVEL}")
+message(STATUS "HAP_LOG_REMOTE: ${HAP_LOG_REMOTE}")
+message(STATUS "HAP_LOG_SENSITIVE: ${HAP_LOG_SENSITIVE}")
+message(STATUS "ENABLE_SF_DEBUG: ${ENABLE_SF_DEBUG}")
 
 #----------------------------------------------------------------------
 # Imported Targets
@@ -385,24 +414,36 @@ target_link_libraries(homekitadk PUBLIC
     ti_devices_cc32xx_driverlib
     mbedcrypto)
 
-# HAP_LOG_LEVEL:
-# 0: kHAPPlatformLogEnabledTypes_None
-# 1: kHAPPlatformLogEnabledTypes_Default
-# 2: kHAPPlatformLogEnabledTypes_Info
-# 3: kHAPPlatformLogEnabledTypes_Debug
+if(HAP_LOG_LEVEL STREQUAL "None")
+    target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_LEVEL=0)
+elseif(HAP_LOG_LEVEL STREQUAL "Default")
+    target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_LEVEL=1)
+elseif(HAP_LOG_LEVEL STREQUAL "Info")
+    target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_LEVEL=2)
+elseif(HAP_LOG_LEVEL STREQUAL "Debug")
+    target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_LEVEL=3)
+else()
+    message(FATAL_ERROR "Invalid HAP_LOG_LEVEL." )
+endif()
+
+if(HAP_LOG_REMOTE)
+    target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_REMOTE=1)
+else()
+    target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_REMOTE=0)
+endif()
+
+if(HAP_LOG_SENSITIVE)
+    target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_SENSITIVE=1)
+else()
+    target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_SENSITIVE=0)
+endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(homekitadk PUBLIC
-        -DHAP_LOG_LEVEL=3
-        -DHAP_LOG_SENSITIVE=0
-        -DHAP_LOG_REMOTE=0
         -DHAP_DISABLE_ASSERTS=0
         -DHAP_DISABLE_PRECONDITIONS=0)
 else()
     target_compile_definitions(homekitadk PUBLIC
-        -DHAP_LOG_LEVEL=0
-        -DHAP_LOG_SENSITIVE=0
-        -DHAP_LOG_REMOTE=0
         -DHAP_DISABLE_ASSERTS=1
         -DHAP_DISABLE_PRECONDITIONS=1)
 endif()
@@ -442,14 +483,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     homekitadk
     multipart_parser)
 
-# __SF_DEBUG__ enables the .dbghdr section, which skips the integrity
-# check phase of booting and signals to the bootloader that it should
-# should not attempt an erase of the image. See SimpleLink Wi-Fi CC323x
-# Technical Reference Manual, Section 21.10: Debugging Flash User
-# Application Using JTAG. Note: debug image is written to 0x01000000.
-
-target_compile_definitions(${PROJECT_NAME} PRIVATE -D__SF_DEBUG__)
-#target_compile_definitions(${PROJECT_NAME} PRIVATE -D__SF_NODEBUG__)
+if (ENABLE_SF_DEBUG)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE -D__SF_DEBUG__)
+endif()
 
 target_link_options(${PROJECT_NAME} PRIVATE "LINKER:-Map=${PROJECT_NAME}.map")
 target_link_options(${PROJECT_NAME} PRIVATE "LINKER:-T,${LINKER_SCRIPT}")
