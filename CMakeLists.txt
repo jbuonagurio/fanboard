@@ -426,17 +426,8 @@ else()
     message(FATAL_ERROR "Invalid HAP_LOG_LEVEL." )
 endif()
 
-if(HAP_LOG_REMOTE)
-    target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_REMOTE=1)
-else()
-    target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_REMOTE=0)
-endif()
-
-if(HAP_LOG_SENSITIVE)
-    target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_SENSITIVE=1)
-else()
-    target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_SENSITIVE=0)
-endif()
+target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_REMOTE=$<IF:$<BOOL:${HAP_LOG_REMOTE}>,1,0>)
+target_compile_definitions(homekitadk PUBLIC -DHAP_LOG_SENSITIVE=$<IF:$<BOOL:${HAP_LOG_SENSITIVE}>,1,0>)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(homekitadk PUBLIC
@@ -483,9 +474,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     homekitadk
     multipart_parser)
 
-if (ENABLE_SF_DEBUG)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE -D__SF_DEBUG__)
-endif()
+target_compile_definitions(${PROJECT_NAME} PRIVATE $<$<BOOL:${ENABLE_SF_DEBUG}>:-D__SF_DEBUG__>)
 
 target_link_options(${PROJECT_NAME} PRIVATE "LINKER:-Map=${PROJECT_NAME}.map")
 target_link_options(${PROJECT_NAME} PRIVATE "LINKER:-T,${LINKER_SCRIPT}")
