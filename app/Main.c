@@ -297,7 +297,7 @@ void HandleUpdatedState(HAPAccessoryServerRef *_Nonnull server, void *_Nullable 
 
 void MainTask(void *pvParameters)
 {
-    LED_Handle ledHandle = LED_open(BOARD_YELLOW_LED, NULL);
+    LED_Handle ledHandle = LED_open(BOARD_BLUE_LED, NULL);
     LED_startBlinking(ledHandle, 150, LED_BLINK_FOREVER);
 
     StartNetworkProcessor();

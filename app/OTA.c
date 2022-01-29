@@ -6,12 +6,14 @@
 //  http://www.boost.org/LICENSE_1_0.txt
 
 #include "OTA.h"
+#include "Board.h"
 
 #include <stdint.h>
 #include <string.h>
 
 #include <multipartparser.h>
 
+#include <ti/drivers/apps/LED.h>
 #include <ti/drivers/net/wifi/netapp.h>
 
 #include <HAPPlatform+Init.h>
@@ -165,7 +167,11 @@ void OTAPutCallback(HTTPRequest *pRequest)
     // Stop the run loop and block until notification from main task.
     HAPPlatformRunLoopRequestStop();
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    
+    // Flash yellow LED to indicate OTA in progress.
     HAPLogInfo(&logObject, "Starting OTA.");
+    LED_Handle ledHandle = LED_open(BOARD_YELLOW_LED, NULL);
+    LED_startBlinking(ledHandle, 150, LED_BLINK_FOREVER);
 
     // Initialize the OTA context.
     static const char *filePath = "/sys/mcuflashimg.bin";
