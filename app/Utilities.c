@@ -1,4 +1,4 @@
-//  Copyright 2021 John Buonagurio
+//  Copyright 2022 John Buonagurio
 //
 //  Distributed under the Boost Software License, Version 1.0.
 //
@@ -8,11 +8,18 @@
 #include "Utilities.h"
 
 #include <HAP.h>
+#include <HAP+Internal.h>
 
 #include <ti/drivers/net/wifi/simplelink.h>
 #include <ti/drivers/net/wifi/slnetifwifi.h>
+#include <ti/devices/cc32xx/driverlib/rom_map.h>
+#include <ti/devices/cc32xx/inc/hw_types.h>
+#include <ti/devices/cc32xx/driverlib/prcm.h>
 
-void PrintDeviceInfo()
+#include <FreeRTOS.h>
+#include <task.h>
+
+void PrintDeviceInfo(void)
 {
     SlDeviceVersion_t ver = {};
     uint8_t veropt = SL_DEVICE_GENERAL_VERSION;
@@ -30,7 +37,7 @@ void PrintDeviceInfo()
     HAPLog(&kHAPLog_Default, "ROM: %d", (short)ver.RomVersion);
 }
 
-void PrintStorageInfo()
+void PrintStorageInfo(void)
 {
     SlFsControlGetStorageInfoResponse_t storageInfo;
     int32_t rc = sl_FsCtl((SlFsCtl_e)SL_FS_CTL_GET_STORAGE_INFO,
@@ -38,7 +45,7 @@ void PrintStorageInfo()
         sizeof(SlFsControlGetStorageInfoResponse_t), NULL);
 
     if (rc < 0) {
-        HAPLog(&kHAPLog_Default, "SL_FS_CTL_GET_STORAGE_INFO failed: %ld.", rc);
+        HAPLogError(&kHAPLog_Default, "SL_FS_CTL_GET_STORAGE_INFO failed: %ld.", rc);
         return;
     }
 
@@ -71,7 +78,7 @@ void PrintStorageInfo()
     HAPLogInfo(&kHAPLog_Default, "FilesUsage.FATWriteCounter = %u", storageInfo.FilesUsage.FATWriteCounter);
 }
 
-void PrintFileList()
+void PrintFileList(void)
 {
     typedef struct {
         SlFileAttributes_t attribute;
@@ -82,12 +89,79 @@ void PrintFileList()
 
     int32_t chunkIndex = -1;
     int32_t fileCount = 1;
+    char attributeBuffer[128];
 
     do {
-        fileCount = sl_FsGetFileList(&chunkIndex, HAPArrayCount(buffer),
-            sizeof(FileListEntry), (uint8_t *)buffer, SL_FS_GET_FILE_ATTRIBUTES);
+        fileCount = sl_FsGetFileList(&chunkIndex,
+                                     HAPArrayCount(buffer),
+                                     sizeof(FileListEntry),
+                                     (uint8_t *)buffer,
+                                     SL_FS_GET_FILE_ATTRIBUTES);
+        
         for (int32_t i = 0; i < fileCount; ++i) {
-            HAPLogInfo(&kHAPLog_Default, buffer[i].filename);
+            HAPRawBufferZero(attributeBuffer, sizeof attributeBuffer);
+            HAPStringBuilderRef stringBuilder;
+            HAPStringBuilderCreate(&stringBuilder, attributeBuffer, sizeof attributeBuffer);
+            if (buffer[i].attribute.Properties & SL_FS_INFO_MUST_COMMIT)
+                HAPStringBuilderAppend(&stringBuilder, "MUST_COMMIT:");
+            if (buffer[i].attribute.Properties & SL_FS_INFO_BUNDLE_FILE)
+                HAPStringBuilderAppend(&stringBuilder, "BUNDLE_FILE:");
+            if (buffer[i].attribute.Properties & SL_FS_INFO_PENDING_COMMIT)
+                HAPStringBuilderAppend(&stringBuilder, "PENDING_COMMIT:");
+            if (buffer[i].attribute.Properties & SL_FS_INFO_PENDING_BUNDLE_COMMIT)
+                HAPStringBuilderAppend(&stringBuilder, "PENDING_BUNDLE_COMMIT:");
+            if (buffer[i].attribute.Properties & SL_FS_INFO_SECURE)
+                HAPStringBuilderAppend(&stringBuilder, "SECURE:");
+            if (buffer[i].attribute.Properties & SL_FS_INFO_NOT_FAILSAFE)
+                HAPStringBuilderAppend(&stringBuilder, "NOT_FAILSAFE:");
+            if (buffer[i].attribute.Properties & SL_FS_INFO_SYS_FILE)
+                HAPStringBuilderAppend(&stringBuilder, "SYS_FILE:");
+            if (buffer[i].attribute.Properties & SL_FS_INFO_NOT_VALID)
+                HAPStringBuilderAppend(&stringBuilder, "NOT_VALID:");
+            if (buffer[i].attribute.Properties & SL_FS_INFO_PUBLIC_WRITE)
+                HAPStringBuilderAppend(&stringBuilder, "PUBLIC_WRITE:");
+            if (buffer[i].attribute.Properties & SL_FS_INFO_PUBLIC_READ)
+                HAPStringBuilderAppend(&stringBuilder, "PUBLIC_READ:");
+            const char *attributeString = HAPStringBuilderGetString(&stringBuilder);
+            HAPLogInfo(&kHAPLog_Default, "%s %s", buffer[i].filename, attributeString);
         }
     } while (fileCount > 0);
+}
+
+void RemoveInvalidFiles(uint32_t token)
+{
+    typedef struct {
+        SlFileAttributes_t attribute;
+        char filename[SL_FS_MAX_FILE_NAME_LENGTH];
+    } FileListEntry;
+
+    static FileListEntry buffer[4];
+    int32_t chunkIndex = -1;
+    int32_t fileCount = 1;
+    
+    do {
+        fileCount = sl_FsGetFileList(&chunkIndex, HAPArrayCount(buffer), sizeof(FileListEntry),
+                                     (uint8_t *)buffer, SL_FS_GET_FILE_ATTRIBUTES);
+        for (size_t i = 0; i < fileCount; ++i) {
+            if (buffer[i].attribute.Properties & SL_FS_INFO_NOT_VALID) {
+                int16_t rc = sl_FsDel((uint8_t *)buffer[i].filename, token);
+                HAPLogDebug(&kHAPLog_Default, "sl_FsDel %s: %d", buffer[i].filename, rc);
+            }
+        }
+    } while (fileCount > 0);
+}
+
+void RestoreFactoryImage(void)
+{
+    SlFsRetToFactoryCommand_t command = { .Operation = SL_FS_FACTORY_RET_TO_IMAGE };
+    int32_t rc = sl_FsCtl((SlFsCtl_e)SL_FS_CTL_RESTORE, 0, NULL, (uint8_t *)&command, sizeof(SlFsRetToFactoryCommand_t), NULL, 0 , NULL);
+    if (rc < 0) {
+        uint16_t err = (uint16_t)rc & 0xFFFF;
+        HAPLogError(&kHAPLog_Default, "SL_FS_FACTORY_RET_TO_IMAGE failed: %ld, %d", rc, err);
+        return;
+    }
+    
+    sl_Stop(200U);
+    vTaskDelay(pdMS_TO_TICKS(500UL));
+    MAP_PRCMHibernateCycleTrigger();
 }

@@ -7,15 +7,21 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void PrintDeviceInfo();
+void PrintDeviceInfo(void);
 
-void PrintStorageInfo();
+void PrintStorageInfo(void);
 
-void PrintFileList();
+void PrintFileList(void);
+
+void RemoveInvalidFiles(uint32_t token);
+
+void RestoreFactoryImage(void);
 
 #ifdef __cplusplus
 }
