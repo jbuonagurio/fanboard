@@ -385,7 +385,6 @@ add_library(homekitadk
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformAccessorySetup.c"
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformAccessorySetupDisplay.c"
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformAccessorySetupNFC.c"
-    "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformBLEPeripheralManager.c"
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformClock.c"
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformKeyValueStore.c"
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformLog.c"
