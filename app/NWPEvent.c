@@ -99,7 +99,7 @@ void SimpleLinkNetAppEventHandler(SlNetAppEvent_t *pSlNetAppEvent)
             (unsigned short)SL_IPV4_BYTE(pSlNetAppEvent->Data.IpAcquiredV4.Ip, 1),
             (unsigned short)SL_IPV4_BYTE(pSlNetAppEvent->Data.IpAcquiredV4.Ip, 0));
         InitializeNetworkModules();
-        xTaskNotifyIndexed(mainTaskHandle, 0, kApplicationEvent_IPAcquired, eSetValueWithOverwrite);
+        xTaskNotifyIndexed(mainTaskHandle, 0, kHAPPlatformEvent_IPAcquired, eSetValueWithOverwrite);
         break;
     case SL_NETAPP_EVENT_IPV6_ACQUIRED:
         HAPLogInfo(&logObject, "IPv6 acquired (%04lX:%04lX:%04lX:%04lX).",
@@ -108,7 +108,7 @@ void SimpleLinkNetAppEventHandler(SlNetAppEvent_t *pSlNetAppEvent)
             (unsigned long)pSlNetAppEvent->Data.IpAcquiredV6.Ip[2],
             (unsigned long)pSlNetAppEvent->Data.IpAcquiredV6.Ip[3]);
         InitializeNetworkModules();
-        xTaskNotifyIndexed(mainTaskHandle, 0, kApplicationEvent_IPAcquired, eSetValueWithOverwrite);
+        xTaskNotifyIndexed(mainTaskHandle, 0, kHAPPlatformEvent_IPAcquired, eSetValueWithOverwrite);
         break;
     case SL_NETAPP_EVENT_IP_COLLISION:
         HAPLogInfo(&logObject, "IP collision.");
@@ -188,12 +188,12 @@ void SimpleLinkWlanEventHandler(SlWlanEvent_t *pSlWlanEvent)
         pSlWlanEvent->Data.Connect.SsidName[pSlWlanEvent->Data.Connect.SsidLen] = '\0';
         HAPLogInfo(&logObject, "Connect (SSID=%s).",
                    pSlWlanEvent->Data.Connect.SsidName);
-        xTaskNotifyIndexed(mainTaskHandle, 0, kApplicationEvent_Connect, eSetValueWithOverwrite);
+        xTaskNotifyIndexed(mainTaskHandle, 0, kHAPPlatformEvent_Connected, eSetValueWithOverwrite);
         break;
     case SL_WLAN_EVENT_DISCONNECT:
         HAPLogInfo(&logObject, "Disconnect (ReasonCode=%d).",
                    pSlWlanEvent->Data.Disconnect.ReasonCode);
-        xTaskNotifyIndexed(mainTaskHandle, 0, kApplicationEvent_Disconnect, eSetValueWithOverwrite);
+        xTaskNotifyIndexed(mainTaskHandle, 0, kHAPPlatformEvent_Disconnected, eSetValueWithOverwrite);
         break;
     case SL_WLAN_EVENT_STA_ADDED:
         // Client connected in AP mode.

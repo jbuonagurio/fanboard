@@ -55,6 +55,26 @@ extern "C" {
 #pragma clang assume_nonnull end
 #endif
 
+/**
+ * Platform events.
+ */
+HAP_ENUM_BEGIN(uint8_t, HAPPlatformEvent) {
+    /**
+     * WLAN disconnected.
+     */
+    kHAPPlatformEvent_Disconnected = 0x01,
+
+    /**
+     * WLAN connected.
+     */
+    kHAPPlatformEvent_Connected = 0x02,
+
+    /**
+     * NetApp IP acquired.
+     */
+    kHAPPlatformEvent_IPAcquired = 0x04
+} HAP_ENUM_END(uint8_t, HAPPlatformEvent);
+
 #ifdef __cplusplus
 }
 #endif

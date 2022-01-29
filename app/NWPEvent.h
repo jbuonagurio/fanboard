@@ -9,12 +9,6 @@
 
 #include <ti/drivers/net/wifi/simplelink.h>
 
-typedef enum {
-    kApplicationEvent_Disconnect = 0x01,
-    kApplicationEvent_Connect = 0x02,
-    kApplicationEvent_IPAcquired = 0x04
-} ApplicationEvent;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
