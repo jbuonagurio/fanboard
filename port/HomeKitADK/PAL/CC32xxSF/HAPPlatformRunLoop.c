@@ -27,6 +27,10 @@
 #include "HAPPlatformLog+Init.h"
 #include "HAPPlatformRunLoop+Init.h"
 
+#include <FreeRTOS.h>
+#include <semphr.h>
+#include <task.h>
+
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "RunLoop" };
 
 #define kHAPPlatformRunLoop_LoopbackPort 9090
@@ -526,7 +530,7 @@ void HAPPlatformRunLoopCreate(const HAPPlatformRunLoopOptions* options)
 
     runLoop.state = kHAPPlatformRunLoopState_Idle;
     
-    // Issue memory barrier to ensure visibility of write to runLoop.loopbackFileDescriptor1 on other threads.
+    // Issue memory barrier to ensure visibility of write to runLoop.loopbackFileDescriptor on other threads.
     __sync_synchronize();
 }
 
@@ -543,7 +547,7 @@ void HAPPlatformRunLoopRelease(void)
 
     runLoop.state = kHAPPlatformRunLoopState_Idle;
 
-    // Issue memory barrier to ensure visibility of write to runLoop.loopbackFileDescriptor1 on other threads.
+    // Issue memory barrier to ensure visibility of write to runLoop.loopbackFileDescriptor on other threads.
     __sync_synchronize();
 }
 
@@ -619,7 +623,6 @@ void HAPPlatformRunLoopRun(void)
 
         HAPAssert(maxFileDescriptor >= -1);
         HAPAssert(maxFileDescriptor < SLNETSOCK_MAX_CONCURRENT_SOCKETS);
-        
         int e = (int)SlNetSock_select(maxFileDescriptor + 1,
                                       &readFileDescriptors,
                                       &writeFileDescriptors,
@@ -630,17 +633,12 @@ void HAPPlatformRunLoopRun(void)
             continue;
         }
         if (e < 0) {
-            HAPPlatformLogPOSIXError(kHAPLogType_Error,
-                                     "System call 'select' failed.",
-                                     errno,
-                                     __func__,
-                                     HAP_FILE,
-                                     __LINE__);
+            HAPPlatformLogPOSIXError(kHAPLogType_Error, "System call 'select' failed.",
+                                     errno, __func__, HAP_FILE, __LINE__);
             HAPFatalError();
         }
 
         ProcessExpiredTimers();
-
         ProcessSelectedFileHandles(&readFileDescriptors, &writeFileDescriptors, &errorFileDescriptors);
     } while (runLoop.state == kHAPPlatformRunLoopState_Running);
 
@@ -656,14 +654,26 @@ void HAPPlatformRunLoopStop(void)
     }
 }
 
+static void HAPPlatformRunLoopStopCallback(void *_Nullable context, size_t contextSize)
+{
+    HAPPlatformRunLoopStop();
+}
+
+void HAPPlatformRunLoopRequestStop(void)
+{
+    HAPError err = HAPPlatformRunLoopScheduleCallback(HAPPlatformRunLoopStopCallback, NULL, 0);
+    if (err) {
+        HAPLogError(&kHAPLog_Default, "HAPPlatformRunLoopScheduleCallback failed.");
+        HAPFatalError();
+    }
+}
+
 HAPError HAPPlatformRunLoopScheduleCallback(HAPPlatformRunLoopCallback callback,
                                             void* _Nullable const context,
                                             size_t contextSize)
 {
     HAPPrecondition(callback);
     HAPPrecondition(!contextSize || context);
-
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
 
     if (contextSize > UINT8_MAX) {
         HAPLogError(&logObject, "Contexts larger than UINT8_MAX are not supported.");

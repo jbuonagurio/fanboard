@@ -46,6 +46,11 @@ void HAPPlatformRunLoopCreate(const HAPPlatformRunLoopOptions* options);
  */
 void HAPPlatformRunLoopRelease(void);
 
+/**
+ * Schedule callback to HAPPlatformRunLoopStop.
+ */
+void HAPPlatformRunLoopRequestStop(void);
+
 #if __has_feature(nullability)
 #pragma clang assume_nonnull end
 #endif
