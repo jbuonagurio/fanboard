@@ -196,14 +196,18 @@ static void ProcessIncomingMessages()
             if (message.header.payloadSize == sizeof(FanControlRXPayload)) {
                 uint16_t fanSpeed = ((FanControlRXPayload *)(&message.payload))->value;
                 HAPLogInfo(&kHAPLog_Default, "Fan speed changed: 0x%04X.", fanSpeed);
-                // Update accessory state.
+                // TODO: Schedule callback. SaveAccessoryState() saves state to persistent memory;
+                // HAPAccessoryServerRaiseEvent() marks the characteristic as modified.
+                //HandleFanRotationSpeedChanged(uint16_t fanRotationSpeed);
             }
             break;
         case 0x62: // Light control 0x60 response
             if (message.header.payloadSize == sizeof(LightControlRXPayload)) {
                 uint16_t lightLevel = ((LightControlRXPayload *)(&message.payload))->value;
                 HAPLogInfo(&kHAPLog_Default, "Light level changed: 0x%04X.", lightLevel);
-                // Update accessory state.
+                // TODO: Schedule callback. SaveAccessoryState() saves state to persistent memory;
+                // HAPAccessoryServerRaiseEvent() marks the characteristic as modified.
+                //HandleLightBulbBrightnessChanged(uint16_t lightBulbBrightness);
             }
             break;
         default:
@@ -299,8 +303,8 @@ void UARTTask(void *pvParameters)
         HAPFatalError();
     }
 
-    vQueueAddToRegistry(rxMessageQueue, "rxqueue");
-    vQueueAddToRegistry(txMessageQueue, "txqueue");
+    vQueueAddToRegistry(rxMessageQueue, "RX Queue");
+    vQueueAddToRegistry(txMessageQueue, "TX Queue");
 
     // SimpleLink™ Wi-Fi® CC323x Technical Reference Manual (SWRU543A), 6.2.3.3:
     // The receive time-out interrupt is asserted when the RX FIFO is not empty,
@@ -356,8 +360,8 @@ void UARTTask(void *pvParameters)
         UART_read(uartHandle, &rxBuffer.header.som, sizeof(rxBuffer.header.som));
 
         // Block until notification from RX callback.
-        uint32_t notifyValue = kMessageStatus_OK;
-        if (xTaskNotifyWait(0x00, ULONG_MAX, &notifyValue, kUART_BlockTime) == pdFAIL) {
+        uint32_t notificationValue = kMessageStatus_OK;
+        if (xTaskNotifyWait(0x00, ULONG_MAX, &notificationValue, kUART_BlockTime) == pdFAIL) {
             // Receive timeout; cancel read and resend last message.
             UART_readCancel(uartHandle);
             if (messagePending == pdPASS) {
@@ -365,7 +369,7 @@ void UARTTask(void *pvParameters)
             }
         }
 
-        switch (notifyValue) {
+        switch (notificationValue) {
         case kMessageStatus_OK:
             break;
         case kMessageStatus_InvalidSOM:
