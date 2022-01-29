@@ -1,0 +1,26 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Sign Image",
+            "type": "shell",
+            "command": "${workspaceFolder}/tools/sign_image.sh",
+            "args": [
+                "fanboard.bin",
+                "${config:cmake.configureSettings.SIMPLELINK_CC32XX_SDK_DIR}/tools/cc32xx_tools/certificate-playground/dummy-root-ca-cert-key",
+                "fanboard.bin.final",
+                "fanboard.bin.final.sign"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        }
+    ]
+  }
