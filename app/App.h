@@ -130,6 +130,11 @@ void AppDeinitialize();
 void AppAccessoryServerStart(void);
 
 /**
+ * Stop the accessory server for the app.
+ */
+void AppAccessoryServerStop(void);
+
+/**
  * Handle the updated state of the Accessory Server.
  */
 void AccessoryServerHandleUpdatedState(HAPAccessoryServerRef *server, void * _Nullable context);

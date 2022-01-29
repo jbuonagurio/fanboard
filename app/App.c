@@ -363,7 +363,7 @@ void AppCreate(HAPAccessoryServerRef *server, HAPPlatformKeyValueStoreRef keyVal
     HAPPrecondition(server);
     HAPPrecondition(keyValueStore);
 
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
+    HAPLogDebug(&kHAPLog_Default, "%s", __func__);
     HAPRawBufferZero(&accessoryConfiguration, sizeof accessoryConfiguration);
     accessoryConfiguration.server = server;
     accessoryConfiguration.keyValueStore = keyValueStore;
@@ -372,13 +372,18 @@ void AppCreate(HAPAccessoryServerRef *server, HAPPlatformKeyValueStoreRef keyVal
 
 void AppRelease(void)
 {
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
+    HAPLogDebug(&kHAPLog_Default, "%s", __func__);
     // Not Implemented
 }
 
 void AppAccessoryServerStart(void)
 {
     HAPAccessoryServerStart(accessoryConfiguration.server, &accessory);
+}
+
+void AppAccessoryServerStop(void)
+{
+    HAPAccessoryServerStop(accessoryConfiguration.server);
 }
 
 void AccessoryServerHandleUpdatedState(HAPAccessoryServerRef *server, void *_Nullable context)
@@ -412,12 +417,12 @@ void AppInitialize(HAPAccessoryServerOptions *serverOptions HAP_UNUSED,
                    HAPPlatform *hapPlatform HAP_UNUSED,
                    HAPAccessoryServerCallbacks *serverCallbacks HAP_UNUSED)
 {
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
+    HAPLogDebug(&kHAPLog_Default, "%s", __func__);
     // Not Implemented
 }
 
 void AppDeinitialize()
 {
-    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
+    HAPLogDebug(&kHAPLog_Default, "%s", __func__);
     // Not Implemented
 }
