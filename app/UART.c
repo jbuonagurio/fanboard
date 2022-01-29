@@ -12,11 +12,14 @@
 
 #include <HAP.h>
 
-#include <ti/drivers/UART.h>
-#include <ti/drivers/uart/UARTCC32XX.h>
 #include <ti/devices/cc32xx/inc/hw_dthe.h>
 #include <ti/devices/cc32xx/inc/hw_memmap.h>
+#include <ti/devices/cc32xx/inc/hw_types.h>
 #include <ti/devices/cc32xx/driverlib/crc.h>
+#include <ti/devices/cc32xx/driverlib/rom_map.h>
+#include <ti/devices/cc32xx/driverlib/uart.h>
+#include <ti/drivers/uart/UARTCC32XX.h>
+#include <ti/drivers/UART.h>
 
 #include <FreeRTOS.h>
 #include <queue.h>
