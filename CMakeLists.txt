@@ -289,14 +289,15 @@ add_library(mbedcrypto
     "${MBEDTLS_DIR}/library/xtea.c"
 
     # Port
-    "${PROJECT_SOURCE_DIR}/port/mbedtls/library/entropy_poll.c")
+    "${PROJECT_SOURCE_DIR}/port/mbedtls/library/entropy_poll.c"
+    "${PROJECT_SOURCE_DIR}/port/mbedtls/library/platform_memory.c")
 
 target_include_directories(mbedcrypto PUBLIC
     "${PROJECT_SOURCE_DIR}/port/mbedtls/include"
     "${MBEDTLS_DIR}/include")
 
-# For sl_NetUtilGet(SL_NETUTIL_TRUE_RANDOM).
-target_link_libraries(mbedcrypto PUBLIC ti_drivers_net_wifi)
+# For sl_NetUtilGet(SL_NETUTIL_TRUE_RANDOM), pvPortCalloc, vPortFree.
+target_link_libraries(mbedcrypto PUBLIC ti_drivers_net_wifi freertos)
 
 #----------------------------------------------------------------------
 # Target: HomeKit ADK
@@ -474,7 +475,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     homekitadk
     multipart_parser)
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE $<$<BOOL:${ENABLE_SF_DEBUG}>:-D__SF_DEBUG__>)
+if(ENABLE_SF_DEBUG)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE -D__SF_DEBUG__)
+endif()
 
 target_link_options(${PROJECT_NAME} PRIVATE "LINKER:-Map=${PROJECT_NAME}.map")
 target_link_options(${PROJECT_NAME} PRIVATE "LINKER:-T,${LINKER_SCRIPT}")

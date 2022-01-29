@@ -27,10 +27,20 @@
 #ifndef MBEDTLS_CONFIG_H
 #define MBEDTLS_CONFIG_H
 
+#include <stddef.h>
+
+/* Forward declarations */
+void vPortFree(void * pv);
+void * pvPortCalloc(size_t xNumElements, size_t xSize);
+
 /* System support */
 #define MBEDTLS_HAVE_ASM
 #define MBEDTLS_NO_PLATFORM_ENTROPY
 #define MBEDTLS_ENTROPY_HARDWARE_ALT
+#define MBEDTLS_PLATFORM_NO_STD_FUNCTIONS
+#define MBEDTLS_PLATFORM_MEMORY
+#define MBEDTLS_PLATFORM_FREE_MACRO vPortFree
+#define MBEDTLS_PLATFORM_CALLOC_MACRO pvPortCalloc
 
 /* mbed TLS feature support */
 #define MBEDTLS_CIPHER_MODE_CTR
@@ -57,7 +67,6 @@
 #define MBEDTLS_ASN1_WRITE_C
 #define MBEDTLS_BASE64_C
 #define MBEDTLS_ENTROPY_C
-#define MBEDTLS_ERROR_C
 #define MBEDTLS_PLATFORM_C
 #define MBEDTLS_VERSION_C
 
