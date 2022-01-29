@@ -159,12 +159,7 @@ void SimpleLinkNetAppEventHandler(SlNetAppEvent_t *pSlNetAppEvent)
 void SimpleLinkHttpServerEventHandler(SlNetAppHttpServerEvent_t *pSlHttpServerEvent,
                                       SlNetAppHttpServerResponse_t *pSlHttpServerResponse)
 {
-    switch (pSlHttpServerEvent->Event) {
-    case SL_NETAPP_EVENT_HTTP_TOKEN_GET:
-    case SL_NETAPP_EVENT_HTTP_TOKEN_POST:
-    default:
-        break;
-    }
+    // Not implemented.
 }
 
 void SimpleLinkNetAppRequestEventHandler(SlNetAppRequest_t *pNetAppRequest,
