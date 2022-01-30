@@ -509,30 +509,3 @@ void Board_init(void)
     UART_init();
     LED_init();
 }
-
-// This structure prevents the CC32XXSF bootloader from overwriting the
-// internal FLASH; this allows us to flash a program that will not be
-// overwritten by the bootloader with the encrypted program saved in
-// "secure/serial flash".
-//
-// This structure must be placed at the beginning of internal FLASH (so
-// the bootloader is able to recognize that it should not overwrite
-// internal FLASH).
-//
-// To enable retention of the application for debug purposes, define
-// __SF_DEBUG__. If retention of the application is no longer desired,
-// define __SF_NODEBUG__.
-// 
-#if defined(__SF_DEBUG__)
-__attribute__((section(".dbghdr"))) const uint32_t Board_debugHeader[] = {
-    0x5AA5A55A,
-    0x000FF800,
-    0xEFA3247D
-};
-#elif defined (__SF_NODEBUG__)
-__attribute__((section(".dbghdr"))) const uint32_t Board_debugHeader[] = {
-    0xFFFFFFFF,
-    0xFFFFFFFF,
-    0xFFFFFFFF
-};
-#endif

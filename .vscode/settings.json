@@ -9,7 +9,7 @@
         "**/build": true
     },
     "files.associations": {
-        "*.svd": "xml"
+        "*.svd": "xml",
     },
     "rewrap.wrappingColumn": 72,
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
@@ -24,8 +24,8 @@
     "cmake.preferredGenerators": [ "Ninja" ],
     "cmake.configureOnOpen": true,
     "cmake.configureSettings": {
-        "SIMPLELINK_CC32XX_SDK_DIR": "/Applications/TI/simplelink_cc32xx_sdk_5_30_00_08",
         "CMAKE_VERBOSE_MAKEFILE": true,
+        "SIMPLELINK_CC32XX_SDK_DIR": "/Applications/TI/simplelink_cc32xx_sdk_5_30_00_08",
         "HAP_LOG_LEVEL": "Debug",
         "HAP_LOG_REMOTE": false,
         "HAP_LOG_SENSITIVE": false,

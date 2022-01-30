@@ -13,7 +13,7 @@
             "device": "CC3220SF",
             "interface": "swd",
             "serialNumber": "",
-            "runToEntryPoint": "resetISR",
+            "runToEntryPoint": "Reset_Handler",
             "showDevDebugOutput": "none",
             "svdFile": "${workspaceRoot}/svd/CC32xxSF.svd",
             "rttConfig": {
@@ -43,7 +43,7 @@
             "rtos": "FreeRTOS",
             "searchDir": [ "/usr/local/share/open-ocd/scripts" ],
             "configFiles": [ "board/ti_cc3220sf_launchpad.cfg" ],
-            "runToEntryPoint": "resetISR",
+            "runToEntryPoint": "Reset_Handler",
             "showDevDebugOutput": "none",
             "svdFile": "${workspaceRoot}/svd/CC32xxSF.svd"
         }

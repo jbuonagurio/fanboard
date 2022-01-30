@@ -55,9 +55,6 @@ option(HAP_LOG_SENSITIVE "Enable sensitive information logging in HomeKit ADK" O
 # Application Using JTAG.
 option(ENABLE_SF_DEBUG "Enable the .dbghdr section" OFF)
 
-set(LINKER_SCRIPT "${PROJECT_SOURCE_DIR}/linker/cc32xxsf_freertos.lds")
-set(STARTUP_FILE "${PROJECT_SOURCE_DIR}/startup/startup_cc32xx_gcc.c")
-
 message(STATUS "HAP_LOG_LEVEL: ${HAP_LOG_LEVEL}")
 message(STATUS "HAP_LOG_REMOTE: ${HAP_LOG_REMOTE}")
 message(STATUS "HAP_LOG_SENSITIVE: ${HAP_LOG_SENSITIVE}")
@@ -432,6 +429,9 @@ target_include_directories(multipart_parser PUBLIC "${MULTIPART_PARSER_DIR}")
 #----------------------------------------------------------------------
 # Target: Application
 #----------------------------------------------------------------------
+
+set(LINKER_SCRIPT "${PROJECT_SOURCE_DIR}/linker/cc32xxsf_freertos.lds")
+set(STARTUP_FILE "${PROJECT_SOURCE_DIR}/startup/startup_cc32xx.c")
 
 add_executable(${PROJECT_NAME})
 
