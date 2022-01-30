@@ -85,9 +85,9 @@ __attribute__((noreturn, alias("Default_Handler")))  void DebugMon_Handler(void)
  */
 #if defined(__SF_DEBUG__)
 __attribute__((section(".dbghdr"))) const uint32_t dbghdr[] = {
-    0x5AA5A55A,
-    0x000FF800,
-    0xEFA3247D
+    0x5AA5A55A, // Header Valid Marker
+    0x000FF800, // Image Size
+    0xEFA3247D  // JTAG Image Marker
 };
 #elif defined (__SF_NODEBUG__)
 __attribute__((section(".dbghdr"))) const uint32_t dbghdr[] = {
@@ -224,6 +224,10 @@ void __attribute__((naked)) Reset_Handler(void)
 
 __attribute__((noreturn)) void HardFault_Handler(void)
 {
+    /* Set a breakpoint if debugger is connected (DHCSR[C_DEBUGEN] == 1). */
+    if ((*(volatile uint32_t *)NVIC_DBG_CTRL) & NVIC_DBG_CTRL_C_DEBUGEN)
+        __asm("bkpt 1");
+    
     while(1) {}
 }
 
