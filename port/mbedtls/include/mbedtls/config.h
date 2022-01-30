@@ -41,6 +41,7 @@ void * pvPortCalloc(size_t xNumElements, size_t xSize);
 #define MBEDTLS_PLATFORM_MEMORY
 #define MBEDTLS_PLATFORM_FREE_MACRO vPortFree
 #define MBEDTLS_PLATFORM_CALLOC_MACRO pvPortCalloc
+#define MBEDTLS_PLATFORM_SNPRINTF_MACRO snprintf
 
 /* mbed TLS feature support */
 #define MBEDTLS_CIPHER_MODE_CTR
@@ -51,10 +52,12 @@ void * pvPortCalloc(size_t xNumElements, size_t xSize);
 #define MBEDTLS_BIGNUM_C
 #define MBEDTLS_CHACHA20_C
 #define MBEDTLS_CHACHAPOLY_C
+#define MBEDTLS_CIPHER_C
 #define MBEDTLS_CTR_DRBG_C
 #define MBEDTLS_ECDH_C
 #define MBEDTLS_ECP_C
 #define MBEDTLS_HKDF_C
+#define MBEDTLS_OID_C
 #define MBEDTLS_MD_C
 #define MBEDTLS_PKCS5_C
 #define MBEDTLS_POLY1305_C
