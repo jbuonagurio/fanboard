@@ -15,6 +15,7 @@
 
 #include <errno.h>
 #include <stdint.h>
+#include <sys/syslimits.h>
 
 #include <ti/net/bsd/errnoutil.h>
 #include <ti/net/slneterr.h> 

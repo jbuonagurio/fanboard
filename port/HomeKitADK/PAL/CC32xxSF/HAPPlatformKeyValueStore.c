@@ -109,7 +109,7 @@ HAPError HAPPlatformKeyValueStoreGet(
             // File does not exist.
             return kHAPError_None;
         }
-        HAPLogError(&logObject, "sl_FsOpen %s failed: %ld.", filePath, handle);
+        HAPLogError(&logObject, "sl_FsOpen %s failed: %d.", filePath, (int)handle);
         return kHAPError_Unknown;
     }
     
@@ -117,7 +117,7 @@ HAPError HAPPlatformKeyValueStoreGet(
 
     int32_t retval = sl_FsRead(handle, 0, (unsigned char *)bytes, maxBytes);
     if (retval < 0) {
-        HAPLogError(&logObject, "sl_FsRead %s failed: %ld.", filePath, retval);
+        HAPLogError(&logObject, "sl_FsRead %s failed: %d.", filePath, (int)retval);
         return kHAPError_Unknown;
     }
     
@@ -166,13 +166,13 @@ HAPError HAPPlatformKeyValueStoreSet(
     int32_t handle = sl_FsOpen((unsigned char *)filePath,
         SL_FS_CREATE | SL_FS_CREATE_FAILSAFE | SL_FS_OVERWRITE | SL_FS_CREATE_MAX_SIZE(numBytes), NULL);
     if (handle < 0) {
-        HAPLogError(&logObject, "sl_FsOpen %s failed: %ld.", filePath, handle);
+        HAPLogError(&logObject, "sl_FsOpen %s failed: %d.", filePath, (int)handle);
         return kHAPError_Unknown;
     }
 
     int32_t retval = sl_FsWrite(handle, 0, (unsigned char *)bytes, numBytes);
     if (retval < 0) {
-        HAPLogError(&logObject, "sl_FsWrite %s failed: %ld.", filePath, retval);
+        HAPLogError(&logObject, "sl_FsWrite %s failed: %d.", filePath, (int)retval);
         return kHAPError_Unknown;
     }
 
@@ -251,7 +251,7 @@ HAPError HAPPlatformKeyValueStoreEnumerate(
     } FsEntry;
     
     FsEntry entries[5];
-    int32_t chunkIndex = -1;
+    long chunkIndex = -1;
     int32_t fileCount = 1;
     bool shouldContinue = true;
     size_t separatorPos = HAPStringGetNumBytes(keyValueStore->rootDirectory);
@@ -262,7 +262,7 @@ HAPError HAPPlatformKeyValueStoreEnumerate(
             sizeof(FsEntry), (uint8_t *)entries, SL_FS_GET_FILE_ATTRIBUTES);
         
         if (fileCount < 0) {
-            HAPLogError(&logObject, "sl_FsGetFileList failed: %ld.", fileCount);
+            HAPLogError(&logObject, "sl_FsGetFileList failed: %d.", (int)fileCount);
             return kHAPError_Unknown;
         }
         

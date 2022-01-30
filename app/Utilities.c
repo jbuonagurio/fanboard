@@ -45,7 +45,7 @@ void PrintStorageInfo(void)
         sizeof(SlFsControlGetStorageInfoResponse_t), NULL);
 
     if (rc < 0) {
-        HAPLogError(&kHAPLog_Default, "SL_FS_CTL_GET_STORAGE_INFO failed: %ld.", rc);
+        HAPLogError(&kHAPLog_Default, "SL_FS_CTL_GET_STORAGE_INFO failed: %d.", (int)rc);
         return;
     }
 
@@ -87,7 +87,7 @@ void PrintFileList(void)
 
     static FileListEntry buffer[4];
 
-    int32_t chunkIndex = -1;
+    long chunkIndex = -1;
     int32_t fileCount = 1;
     char attributeBuffer[128];
 
@@ -136,7 +136,7 @@ void RemoveInvalidFiles(uint32_t token)
     } FileListEntry;
 
     static FileListEntry buffer[4];
-    int32_t chunkIndex = -1;
+    long chunkIndex = -1;
     int32_t fileCount = 1;
     
     do {
@@ -157,7 +157,7 @@ void RestoreFactoryImage(void)
     int32_t rc = sl_FsCtl((SlFsCtl_e)SL_FS_CTL_RESTORE, 0, NULL, (uint8_t *)&command, sizeof(SlFsRetToFactoryCommand_t), NULL, 0 , NULL);
     if (rc < 0) {
         uint16_t err = (uint16_t)rc & 0xFFFF;
-        HAPLogError(&kHAPLog_Default, "SL_FS_FACTORY_RET_TO_IMAGE failed: %ld, %d", rc, err);
+        HAPLogError(&kHAPLog_Default, "SL_FS_FACTORY_RET_TO_IMAGE failed: %d, %d", (int)rc, (int)err);
         return;
     }
     

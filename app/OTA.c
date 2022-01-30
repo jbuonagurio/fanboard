@@ -209,7 +209,7 @@ void OTAPutCallback(HTTPRequest *pRequest)
         static char chunkBuffer[SL_NETAPP_REQUEST_MAX_DATA_LEN];
         while (pRequest->requestFlags & SL_NETAPP_REQUEST_RESPONSE_FLAGS_CONTINUATION) {
             int16_t rc = sl_NetAppRecv(pRequest->requestHandle, (uint16_t *)&chunkSize,
-                                       (uint8_t *)chunkBuffer, &pRequest->requestFlags);
+                                       (uint8_t *)chunkBuffer, (unsigned long *)&pRequest->requestFlags);
             if (rc < 0) {
                 HAPLogError(&logObject, "sl_NetAppRecv failed: %d.", rc);
                 HAPPlatformOTAAbort(&otaContext);

@@ -74,9 +74,9 @@ static void RollbackBundle(void)
                               (uint16_t)sizeof(SlFsControl_t),
                               (uint8_t *)NULL,
                               0U,
-                              (uint32_t *)NULL);
+                              (unsigned long *)NULL);
     if (retval != 0) {
-        HAPLogError(&logObject, "Bundle rollback failed (%ld).", retval);
+        HAPLogError(&logObject, "Bundle rollback failed (%d).", (int)retval);
     }
     else {
         HAPLogInfo(&logObject, "Bundle rollback succeeded.");
@@ -95,9 +95,9 @@ static void RollbackRxFile(HAPPlatformOTAContext *otaContext)
                               (uint16_t)sizeof(SlFsControl_t),
                               (uint8_t *)NULL,
                               0U,
-                              (uint32_t *)&newToken);
+                              (unsigned long *)&newToken);
     if (retval != 0) {
-        HAPLogError(&logObject, "File %s rollback failed (%ld).", otaContext->filePath, retval);
+        HAPLogError(&logObject, "File %s rollback failed (%d).", otaContext->filePath, (int)retval);
     }
     else {
         HAPLogInfo(&logObject, "File %s rolled back.", otaContext->filePath);
@@ -108,7 +108,7 @@ static void DeleteRxFile(HAPPlatformOTAContext *otaContext)
 {
     int32_t retval = sl_FsDel((uint8_t *)otaContext->filePath, kOTA_VendorToken);
     if (retval != 0) {
-        HAPLogError(&logObject, "File %s delete failed (%ld).", otaContext->filePath, retval);
+        HAPLogError(&logObject, "File %s delete failed (%d).", otaContext->filePath, (int)retval);
     }
     else {
         HAPLogInfo(&logObject, "File %s deleted.", otaContext->filePath);
@@ -127,7 +127,7 @@ static int32_t CreateBootInfoFile(void)
                             (_u32 *)&token);
 
     if (fd < 0) {
-        HAPLogError(&logObject, "Error opening bootinfo file: %ld.", fd);
+        HAPLogError(&logObject, "Error opening bootinfo file: %d.", (int)fd);
         /* Propagate error to caller. */
         retval = fd;
     }
@@ -138,7 +138,7 @@ static int32_t CreateBootInfoFile(void)
         bootInfo.ulStartWdtKey = kOTA_WDTStartKey;
         retval = sl_FsWrite(fd, 0UL, (uint8_t *)&bootInfo, (uint32_t)sizeof(sBootInfo_t));
         if (retval != (int32_t)sizeof(sBootInfo_t)) {
-            HAPLogError(&logObject, "Error writing bootinfo file: %ld.", retval);
+            HAPLogError(&logObject, "Error writing bootinfo file: %d.", (int)retval);
             if (retval > 0) {
                 /* Force a fail result to the caller. Map to zero bytes written. */
                 retval = 0;
@@ -149,7 +149,7 @@ static int32_t CreateBootInfoFile(void)
         /* Close the file even after a write failure. */
         int32_t closeResult = sl_FsClose(fd, (uint8_t *) NULL, (uint8_t *) NULL, 0UL);
         if (closeResult < 0) {
-            HAPLogError(&logObject, "Error closing bootinfo file: %ld.", closeResult);
+            HAPLogError(&logObject, "Error closing bootinfo file: %d.", (int)closeResult);
             /* Return the most recent error code to the caller. */
             retval = closeResult;
         }
@@ -168,7 +168,7 @@ HAPError HAPPlatformOTAAbort(HAPPlatformOTAContext *otaContext)
     uint8_t signature[] = "A";
     int32_t retval = sl_FsClose(otaContext->fileDescriptor, (uint8_t *)NULL, (uint8_t *)signature, 1);
     if (retval < 0) {
-        HAPLogError(&logObject, "File abort failed (%ld).", retval);
+        HAPLogError(&logObject, "File abort failed (%d).", (int)retval);
     }
 
     otaContext->fileDescriptor = -1;
@@ -211,15 +211,15 @@ HAPError HAPPlatformOTACreate(HAPPlatformOTAContext *otaContext)
                 /* The file remains open until the OTA agent calls HAPPlatformOTAClose() after transfer or failure. */
                 retval = sl_FsOpen((uint8_t *)otaContext->filePath,
                                    (uint32_t)(flags | SL_FS_CREATE_MAX_SIZE(otaContext->maxFileSize)),
-                                   (uint32_t *)&token);
+                                   (unsigned long *)&token);
                 
                 if (retval > 0) {
-                    HAPLogInfo(&logObject, "Receive file created. Token: %lu.", token);
+                    HAPLogInfo(&logObject, "Receive file created. Token: %u.", (unsigned)token);
                     otaContext->fileDescriptor = (int32_t)retval;
                     err = kHAPError_None;
                 }
                 else {
-                    HAPLogError(&logObject, "Error (%ld) trying to create receive file.", retval);
+                    HAPLogError(&logObject, "Error (%d) trying to create receive file.", (int)retval);
                     if (retval == SL_ERROR_FS_FILE_IS_ALREADY_OPENED) {
                         /* System is in an inconsistent state and must be rebooted. */
                         if (HAPPlatformOTAResetDevice() != kHAPError_None) {
@@ -344,16 +344,16 @@ HAPError HAPPlatformOTAResetDevice(void)
     return kHAPError_Unknown;
 }
 
-HAPError HAPPlatformOTASetImageState(const HAPPlatformOTAContext *otaContext HAP_UNUSED,
+HAPError HAPPlatformOTASetImageState(const HAPPlatformOTAContext *_Nullable otaContext HAP_UNUSED,
                                      HAPPlatformOTAImageState state)
 {
     if (state == kHAPPlatformOTAImageState_Accepted) {
         PRCMPeripheralReset((uint32_t)PRCM_WDT);
         SlFsControl_t fsControl;
         fsControl.IncludeFilters = 0U;
-        int32_t rc = sl_FsCtl(SL_FS_CTL_BUNDLE_COMMIT, (uint32_t)0, (uint8_t *)NULL, (uint8_t *)&fsControl, (uint16_t)sizeof(SlFsControl_t), (uint8_t *) NULL, (uint16_t)0, (uint32_t *)NULL);
+        int32_t rc = sl_FsCtl(SL_FS_CTL_BUNDLE_COMMIT, (uint32_t)0, NULL, (uint8_t *)&fsControl, (uint16_t)sizeof(SlFsControl_t), NULL, (uint16_t)0, NULL);
         if (rc != 0) {
-            HAPLogError(&logObject, "Accepted final image but commit failed (%ld).", rc);
+            HAPLogError(&logObject, "Accepted final image but commit failed (%d).", (int)rc);
             return kHAPError_Unknown;
         }
         else {
@@ -364,9 +364,9 @@ HAPError HAPPlatformOTASetImageState(const HAPPlatformOTAContext *otaContext HAP
     else if (state == kHAPPlatformOTAImageState_Rejected) {
         SlFsControl_t fsControl;
         fsControl.IncludeFilters = 0U;
-        int32_t rc = sl_FsCtl(SL_FS_CTL_BUNDLE_ROLLBACK, (uint32_t)0, (uint8_t *)NULL, (uint8_t *)&fsControl, (uint16_t)sizeof(SlFsControl_t), (uint8_t *) NULL, (uint16_t)0, (uint32_t *)NULL);
+        int32_t rc = sl_FsCtl(SL_FS_CTL_BUNDLE_ROLLBACK, (uint32_t)0, NULL, (uint8_t *)&fsControl, (uint16_t)sizeof(SlFsControl_t), NULL, (uint16_t)0, NULL);
         if (rc != 0) {
-            HAPLogError(&logObject, "Bundle rollback failed after reject (%ld).", rc);
+            HAPLogError(&logObject, "Bundle rollback failed after reject (%d).", (int)rc);
             return kHAPError_Unknown;
         }
         else {
@@ -377,9 +377,9 @@ HAPError HAPPlatformOTASetImageState(const HAPPlatformOTAContext *otaContext HAP
     else if (state == kHAPPlatformOTAImageState_Aborted) {
         SlFsControl_t fsControl;
         fsControl.IncludeFilters = 0U;
-        int32_t rc = sl_FsCtl(SL_FS_CTL_BUNDLE_ROLLBACK, (uint32_t)0, (uint8_t *)NULL, (uint8_t *)&fsControl, (uint16_t)sizeof(SlFsControl_t), (uint8_t *) NULL, (uint16_t)0, (uint32_t *)NULL);
+        int32_t rc = sl_FsCtl(SL_FS_CTL_BUNDLE_ROLLBACK, (uint32_t)0, NULL, (uint8_t *)&fsControl, (uint16_t)sizeof(SlFsControl_t), NULL, (uint16_t)0, NULL);
         if (rc != 0) {
-            HAPLogError(&logObject, "Bundle rollback failed after abort (%ld).", rc);
+            HAPLogError(&logObject, "Bundle rollback failed after abort (%d).", (int)rc);
             return kHAPError_Unknown;
         }
         else {
@@ -391,12 +391,12 @@ HAPError HAPPlatformOTASetImageState(const HAPPlatformOTAContext *otaContext HAP
         return kHAPError_None;
     }
     else {
-        HAPLogError(&logObject, "Unknown state received %ld.", (int32_t)state);
+        HAPLogError(&logObject, "Unknown state received (%d).", (int)state);
         return kHAPError_Unknown;
     }
 }
 
-HAPPlatformOTAPALImageState HAPPlatformOTAGetImageState(const HAPPlatformOTAContext *otaContext HAP_UNUSED)
+HAPPlatformOTAPALImageState HAPPlatformOTAGetImageState(const HAPPlatformOTAContext *_Nullable otaContext HAP_UNUSED)
 {
     const uint32_t checkFlags = SL_FS_INFO_SYS_FILE | SL_FS_INFO_SECURE |
                                 SL_FS_INFO_NOSIGNATURE | SL_FS_INFO_PUBLIC_WRITE |
@@ -430,7 +430,7 @@ HAPPlatformOTAPALImageState HAPPlatformOTAGetImageState(const HAPPlatformOTACont
         return kHAPPlatformOTAPALImageState_Invalid;
     }
     else {
-        HAPLogError(&logObject, "sl_FsGetInfo failed (%ld) on /sys/mcuflashimg.bin.", (int32_t)rc);
+        HAPLogError(&logObject, "sl_FsGetInfo failed (%d) on /sys/mcuflashimg.bin.", (int)rc);
         return kHAPPlatformOTAPALImageState_Invalid;
     }
 }

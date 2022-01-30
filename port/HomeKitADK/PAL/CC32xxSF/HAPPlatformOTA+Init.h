@@ -147,7 +147,7 @@ HAPError HAPPlatformOTAResetDevice(void);
  * @return kHAPError_None           If successful.
  * @return kHAPError_Unknown        If state could not be set.
  */
-HAPError HAPPlatformOTASetImageState(const HAPPlatformOTAContext *otaContext,
+HAPError HAPPlatformOTASetImageState(const HAPPlatformOTAContext *_Nullable otaContext,
                                      HAPPlatformOTAImageState state);
 
 /**
@@ -157,7 +157,7 @@ HAPError HAPPlatformOTASetImageState(const HAPPlatformOTAContext *otaContext,
  *
  * @return A value of type HAPPlatformOTAPALImageState.
  */
-HAPPlatformOTAPALImageState HAPPlatformOTAGetImageState(const HAPPlatformOTAContext *otaContext);
+HAPPlatformOTAPALImageState HAPPlatformOTAGetImageState(const HAPPlatformOTAContext *_Nullable otaContext);
 
 #if __has_feature(nullability)
 #pragma clang assume_nonnull end
