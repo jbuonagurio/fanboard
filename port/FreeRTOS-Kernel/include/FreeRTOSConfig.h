@@ -92,9 +92,6 @@
 /* Default stack size for TI-POSIX threads in words. */
 #define configPOSIX_STACK_SIZE                     ((unsigned short)512)
 
-/* Initialize ISR stack to known value for TI Runtime Object View. */
-#define configENABLE_ISR_STACK_INIT                0
-
 /* Cortex-M4 interrupt priority configuration. */
 /* See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 #define configPRIO_BITS 3
