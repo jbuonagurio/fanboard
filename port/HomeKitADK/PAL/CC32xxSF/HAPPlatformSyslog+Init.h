@@ -17,10 +17,6 @@ extern "C" {
 #pragma clang assume_nonnull begin
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Syslog initialization options.
  */
