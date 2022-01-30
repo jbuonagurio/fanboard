@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include <SEGGER_RTT_Conf.h>
 #include <SEGGER_RTT.h>
 
 #include "HAP.h"
@@ -173,9 +174,6 @@ void HAPPlatformLogCapture(
     SEGGER_RTT_printf(kRTT_LogChannel, RTT_CTRL_RESET);
 
 #if HAP_LOG_REMOTE
-    // SEGGER_RTT_ReadUpBuffer must not be called when J-Link might also do RTT.
-    static char rttBuffer[1024];
-    unsigned n = SEGGER_RTT_ReadUpBuffer(0, rttBuffer, sizeof rttBuffer);
-    HAPPlatformSyslogWrite(rttBuffer, n, NULL);
+    HAPPlatformSyslogCapture(kRTT_LogChannel);
 #endif
 }

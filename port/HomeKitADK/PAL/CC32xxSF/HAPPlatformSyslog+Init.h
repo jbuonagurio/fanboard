@@ -40,13 +40,21 @@ typedef struct {
 void HAPPlatformSyslogInitialize(const HAPPlatformSyslogOptions* options);
 
 /**
- * Send buffer to remote syslog server.
- *
- * @param      bytes            Buffer containing data to send.
- * @param      maxBytes         Length of buffer.
- * @param[out] numBytes         Number of bytes that have been written.
+ * Suspend syslog logging.
  */
-void HAPPlatformSyslogWrite(const void* bytes, size_t maxBytes, size_t* _Nullable numBytes);
+void HAPPlatformSyslogSuspend(void);
+
+/**
+ * Resume syslog logging.
+ */
+void HAPPlatformSyslogResume(void);
+
+/**
+ * Send RTT buffer to remote syslog server.
+ *
+ * @param      bufferIndex      Index of the RTT buffer to send.
+ */
+void HAPPlatformSyslogCapture(unsigned bufferIndex);
 
 #if __has_feature(nullability)
 #pragma clang assume_nonnull end

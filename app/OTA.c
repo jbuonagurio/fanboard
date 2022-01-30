@@ -19,6 +19,7 @@
 #include <HAPPlatform+Init.h>
 #include <HAPPlatformOTA+Init.h>
 #include <HAPPlatformRunLoop+Init.h>
+#include <HAPPlatformSyslog+Init.h>
 
 #include <FreeRTOS.h>
 #include <semphr.h>
@@ -156,8 +157,6 @@ static bool ExtractBoundary(const char *contentType, char *buffer, size_t buffer
 
 void OTAPutCallback(HTTPRequest *pRequest)
 {
-    HAPLogDebug(&logObject, "%s", __func__);
-
     // Extract boundary string for multipart/form-data.
     static char boundary[70 + 1];
     HAPRawBufferZero(boundary, sizeof(boundary));
@@ -167,9 +166,12 @@ void OTAPutCallback(HTTPRequest *pRequest)
     // Stop the run loop and block until notification from main task.
     HAPPlatformRunLoopRequestStop();
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    
-    // Flash yellow LED to indicate OTA in progress.
     HAPLogInfo(&logObject, "Starting OTA.");
+
+    // Suspend syslog logging to prevent OTA interruption.
+    HAPPlatformSyslogSuspend();
+
+    // Flash yellow LED to indicate OTA in progress.
     LED_Handle ledHandle = LED_open(BOARD_YELLOW_LED, NULL);
     LED_startBlinking(ledHandle, 150, LED_BLINK_FOREVER);
 
@@ -183,10 +185,7 @@ void OTAPutCallback(HTTPRequest *pRequest)
 
     // Open file for write. This must be followed by a call to HAPPlatformOTAClose.
     if (HAPPlatformOTACreate(&otaContext) != kHAPError_None) {
-        HAPPlatformOTAAbort(&otaContext);
-        SendHTTPRequestResponse(pRequest->requestHandle, SL_NETAPP_HTTP_RESPONSE_500_INTERNAL_SERVER_ERROR);
-        HAPPlatformOTAResetDevice();
-        return;
+        goto abort;
     }
     else {
         // Configure the parser for multipart/form-data.
@@ -211,11 +210,8 @@ void OTAPutCallback(HTTPRequest *pRequest)
             int16_t rc = sl_NetAppRecv(pRequest->requestHandle, (uint16_t *)&chunkSize,
                                        (uint8_t *)chunkBuffer, (unsigned long *)&pRequest->requestFlags);
             if (rc < 0) {
-                HAPLogError(&logObject, "sl_NetAppRecv failed: %d.", rc);
-                HAPPlatformOTAAbort(&otaContext);
-                SendHTTPRequestResponse(pRequest->requestHandle, SL_NETAPP_HTTP_RESPONSE_500_INTERNAL_SERVER_ERROR);
-                HAPPlatformOTAResetDevice();
-                return;
+                HAPLogError(&logObject, "Failed to read data from NWP (%d).", rc);
+                goto abort;
             }
         
             multipartparser_execute(&parser, &callbacks, chunkBuffer, chunkSize);
@@ -224,6 +220,7 @@ void OTAPutCallback(HTTPRequest *pRequest)
 
     // Transfer complete.
     SendHTTPRequestResponse(pRequest->requestHandle, SL_NETAPP_HTTP_RESPONSE_201_CREATED);
+    HAPPlatformSyslogResume();
     HAPLogDebug(&logObject, "OTA File Size = %u", otaFileSize);
     HAPLogBufferDebug(&logObject, otaContext.signature, otaContext.signatureSize, "Signature");
     
@@ -234,6 +231,13 @@ void OTAPutCallback(HTTPRequest *pRequest)
     // 5. On failure, reset or rollback the image.
     HAPPlatformOTAClose(&otaContext);
     HAPPlatformOTAActivateNewImage(&otaContext);
+    return;
+
+abort:
+    HAPPlatformSyslogResume();
+    HAPPlatformOTAAbort(&otaContext);
+    SendHTTPRequestResponse(pRequest->requestHandle, SL_NETAPP_HTTP_RESPONSE_500_INTERNAL_SERVER_ERROR);
+    HAPPlatformOTAResetDevice();
 }
 
 void OTAGetCallback(HTTPRequest *pRequest)

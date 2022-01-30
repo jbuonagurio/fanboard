@@ -4,21 +4,33 @@
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of HomeKit ADK project authors.
 
-#include <stdint.h>
+#include <FreeRTOS.h>
+#include <semphr.h>
 
+#include <ti/drivers/dpl/HwiP.h>
 #include <ti/net/slneterr.h> 
 #include <ti/net/slnetsock.h>
 #include <ti/net/slnetutils.h>
 
+#include <SEGGER_RTT_Conf.h>
+#include <SEGGER_RTT.h>
+
 #include "HAPPlatform.h"
 #include "HAPPlatformSyslog+Init.h"
+
+#define kRTT_BufferSizeUp (BUFFER_SIZE_UP)
 
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "Syslog" };
 
 static struct {
     SlNetSock_AddrIn_t addrIn;
     int16_t socketDescriptor;
-} syslog = { .socketDescriptor = -1 };
+    uint8_t buffer[kRTT_BufferSizeUp];
+    SemaphoreHandle_t _Nullable mutex;
+} syslog = {
+    .socketDescriptor = -1,
+    .mutex = NULL
+};
 
 void HAPPlatformSyslogInitialize(const HAPPlatformSyslogOptions* options)
 {
@@ -37,24 +49,39 @@ void HAPPlatformSyslogInitialize(const HAPPlatformSyslogOptions* options)
         HAPLogError(&logObject, "Failed to open UDP socket.");
         return;
     }
+
+    // Use a mutex to guard access to RTT buffer and socket.
+    syslog.mutex = xSemaphoreCreateMutex();
 }
 
-void HAPPlatformSyslogWrite(const void* bytes, size_t maxBytes, size_t* _Nullable numBytes)
+void HAPPlatformSyslogSuspend(void)
 {
-    HAPPrecondition(bytes);
-
-    int32_t n = 0;
-
-    if (syslog.socketDescriptor >= 0) {
-        n = SlNetSock_sendTo(syslog.socketDescriptor,
-                            bytes,
-                            maxBytes,
-                            0,
-                            (SlNetSock_Addr_t *)&syslog.addrIn,
-                            sizeof(syslog.addrIn));
+    if (syslog.mutex) {
+        xSemaphoreTake(syslog.mutex, portMAX_DELAY);
     }
+}
 
-    if (numBytes) {
-        *numBytes = n > 0 ? (size_t)n : 0;
+void HAPPlatformSyslogResume(void)
+{
+    if (syslog.mutex) {
+        xSemaphoreGive(syslog.mutex);
+    }
+}
+
+void HAPPlatformSyslogCapture(unsigned bufferIndex)
+{
+    // Make sure we are not logging from an ISR.
+    HAPAssert(!HwiP_inISR());
+
+    if (syslog.socketDescriptor < 0)
+        return;
+    
+    if (xSemaphoreTake(syslog.mutex, (TickType_t)0)) {
+        // SEGGER_RTT_ReadUpBuffer locks against all other RTT operations
+        // and must not be called when J-Link might also do RTT.
+        unsigned numBytes = SEGGER_RTT_ReadUpBuffer(bufferIndex, syslog.buffer, kRTT_BufferSizeUp);
+        SlNetSock_sendTo(syslog.socketDescriptor, syslog.buffer, (uint32_t)numBytes, 0,
+                         (SlNetSock_Addr_t *)&syslog.addrIn, sizeof(syslog.addrIn));
+        xSemaphoreGive(syslog.mutex);
     }
 }
