@@ -5,6 +5,12 @@ execute_process(COMMAND arm-none-eabi-gcc -print-sysroot
     OUTPUT_VARIABLE CMAKE_SYSROOT
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
+execute_process(COMMAND arm-none-eabi-gcc -print-libgcc-file-name
+    OUTPUT_VARIABLE LIBGCC_FILE_NAME
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+get_filename_component(LIBGCC_DIR ${LIBGCC_FILE_NAME} DIRECTORY)
+
 set(CMAKE_C_COMPILER clang CACHE STRING "" FORCE)
 set(CMAKE_CXX_COMPILER clang++ CACHE STRING "" FORCE)
 set(CMAKE_ASM_COMPILER clang CACHE STRING "" FORCE)
@@ -21,8 +27,6 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 #     Use software library functions for floating-point operations.
 # -mthumb
 #     Generate ARMv7E-M Thumb instructions.
-# --specs=nano.specs
-#     Link with newlib-nano.
 # -ffunction-sections
 # -fdata-sections
 #     Place each function or data item into its own section in the
@@ -30,21 +34,16 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 # -ffreestanding
 #     Asserts that program startup is not necessarily at `main`.
 #     Implies `-fno-builtin`.
-# -fmerge-constants
-#     Attempt to merge identical constants (string constants and
-#     floating-point constants) across compilation units. 
-# -fstack-usage
-#     Generate an extra file that specifies the maximum amount of
-#     stack used, on a per-function basis.
 set(CMAKE_C_FLAGS_INIT
-    "-B${CMAKE_SYSROOT} -mcpu=cortex-m4+nofp -mfloat-abi=soft -mthumb --specs=nano.specs -ffunction-sections -fdata-sections -ffreestanding -fmerge-constants -fstack-usage")
+    "-B${CMAKE_SYSROOT} -mcpu=cortex-m4+nofp -mfloat-abi=soft -mthumb -ffunction-sections -fdata-sections -ffreestanding")
 set(CMAKE_CXX_FLAGS_INIT
-    "-B${CMAKE_SYSROOT} -mcpu=cortex-m4+nofp -mfloat-abi=soft -mthumb --specs=nano.specs -ffunction-sections -fdata-sections -ffreestanding -fmerge-constants -fstack-usage")
+    "-B${CMAKE_SYSROOT} -mcpu=cortex-m4+nofp -mfloat-abi=soft -mthumb -ffunction-sections -fdata-sections -ffreestanding")
 
-# -nostartfiles
-#     Do not use the standard system startup files when linking.
-#     The standard system libraries are used normally, unless
-#     `-nostdlib`, `-nolibc`, or `-nodefaultlibs` is used.
+# -nostdlib
+#     Do not use the standard system startup files or libraries
+#     when linking.
+# -nodefaultlibs
+#     Do not use the standard system libraries when linking.
 # --gcsections
 #     Enable garbage collection of unused input sections. Used with
 #     compiler `-fdata-sections` option.
@@ -55,13 +54,8 @@ set(CMAKE_CXX_FLAGS_INIT
 # --sort-section=alignment
 #     This option will apply "SORT_BY_ALIGNMENT" to all wildcard
 #     section patterns in the linker script.
-# --cref
-#     Output a cross reference table.
-# --print-memory-usage
-#     Print used size, total size and used size of memory regions
-#     created with the MEMORY command.
 set(CMAKE_EXE_LINKER_FLAGS_INIT
-    "-nostartfiles -lg -lgcc -lc -lm -Wl,--gc-sections,--omagic,--sort-section=alignment,--cref,--print-memory-usage")
+    "-nostdlib -L\"${LIBGCC_DIR}\" -lg_nano -lgcc -lc_nano -lm -Wl,--gc-sections,--omagic,--sort-section=alignment")
 
 # Build configuration flags for C.
 set(CMAKE_C_FLAGS_DEBUG "-Og -g3 -Wall -DDEBUG" CACHE STRING "" FORCE)

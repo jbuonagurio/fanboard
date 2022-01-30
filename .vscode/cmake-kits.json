@@ -1,6 +1,10 @@
 [
     {
-        "name": "ARM-GCC",
+        "name": "ARM GCC",
         "toolchainFile": "${workspaceFolder}/cmake/arm-gcc-toolchain.cmake"
+    },
+    {
+        "name": "ARM Clang",
+        "toolchainFile": "${workspaceFolder}/cmake/clang-arm-gcc-toolchain.cmake"
     }
 ]
