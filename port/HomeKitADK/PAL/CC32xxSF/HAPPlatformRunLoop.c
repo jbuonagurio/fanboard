@@ -28,10 +28,6 @@
 #include "HAPPlatformLog+Init.h"
 #include "HAPPlatformRunLoop+Init.h"
 
-#include <FreeRTOS.h>
-#include <semphr.h>
-#include <task.h>
-
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "RunLoop" };
 
 #define kHAPPlatformRunLoop_LoopbackPort 9090
