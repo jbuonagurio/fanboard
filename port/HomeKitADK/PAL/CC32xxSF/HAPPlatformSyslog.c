@@ -76,7 +76,7 @@ void HAPPlatformSyslogCapture(unsigned bufferIndex)
     if (syslog.socketDescriptor < 0)
         return;
     
-    if (xSemaphoreTake(syslog.mutex, (TickType_t)0)) {
+    if (xSemaphoreTake(syslog.mutex, pdMS_TO_TICKS(20))) {
         // SEGGER_RTT_ReadUpBuffer locks against all other RTT operations
         // and must not be called when J-Link might also do RTT.
         unsigned numBytes = SEGGER_RTT_ReadUpBuffer(bufferIndex, syslog.buffer, kRTT_BufferSizeUp);
