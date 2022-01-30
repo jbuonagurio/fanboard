@@ -22,13 +22,9 @@ int __xpg_strerror_r(int, char *, size_t);
 
 static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, .category = "Log" };
 
-void HAPPlatformLogPOSIXError(
-        HAPLogType type,
-        const char* _Nonnull message,
-        int errorNumber,
-        const char* _Nonnull function,
-        const char* _Nonnull file,
-        int line) {
+void HAPPlatformLogPOSIXError(HAPLogType type, const char *_Nonnull message, int errorNumber,
+                              const char *_Nonnull function, const char *_Nonnull file, int line)
+{
     HAPPrecondition(message);
     HAPPrecondition(function);
     HAPPrecondition(file);
@@ -177,7 +173,7 @@ void HAPPlatformLogCapture(
     SEGGER_RTT_printf(kRTT_LogChannel, RTT_CTRL_RESET);
 
 #if HAP_LOG_REMOTE
-    // Must not be called when J-Link might also do RTT.
+    // SEGGER_RTT_ReadUpBuffer must not be called when J-Link might also do RTT.
     static char rttBuffer[1024];
     unsigned n = SEGGER_RTT_ReadUpBuffer(0, rttBuffer, sizeof rttBuffer);
     HAPPlatformSyslogWrite(rttBuffer, n, NULL);

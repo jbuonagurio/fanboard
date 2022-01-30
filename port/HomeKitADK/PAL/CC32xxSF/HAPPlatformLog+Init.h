@@ -29,13 +29,8 @@ extern "C" {
  * @param      file                 File name in which the error occurred.
  * @param      line                 Line number on which the error occurred.
  */
-void HAPPlatformLogPOSIXError(
-        HAPLogType type,
-        const char* message,
-        int errorNumber,
-        const char* function,
-        const char* file,
-        int line);
+void HAPPlatformLogPOSIXError(HAPLogType type, const char *message, int errorNumber,
+                              const char *function, const char *file, int line);
 
 #if __has_feature(nullability)
 #pragma clang assume_nonnull end
