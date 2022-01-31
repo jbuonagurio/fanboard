@@ -1,6 +1,6 @@
 // Copyright (c) 2015-2019 The HomeKit ADK Contributors
 // 
-// Copyright (c) 2021 John Buonagurio
+// Copyright (c) 2022 John Buonagurio
 // 
 // Licensed under the Apache License, Version 2.0 (the “License”);
 // you may not use this file except in compliance with the License.
@@ -97,8 +97,8 @@ void HAPPlatformLogCapture(
 
     // Time.
     HAPTime now = HAPPlatformClockGetCurrent();
-    (void) SEGGER_RTT_printf(kRTT_LogChannel, "%8llu.%03llu", (unsigned long long) (now / HAPSecond), (unsigned long long) (now % HAPSecond));
-    (void) SEGGER_RTT_printf(kRTT_LogChannel, "\t");
+    (void) SEGGER_RTT_printf(kRTT_LogChannel, "%8lu.%03lu\t",
+        (unsigned long) (now / HAPSecond), (unsigned long) (now % HAPSecond));
 
     // Type.
     switch (type) {

@@ -1,13 +1,14 @@
 // Copyright (c) 2015-2019 The HomeKit ADK Contributors
 //
-// Copyright (c) 2021 John Buonagurio
+// Copyright (c) 2022 John Buonagurio
 // 
 // Licensed under the Apache License, Version 2.0 (the “License”);
 // you may not use this file except in compliance with the License.
 // See [CONTRIBUTORS.md] for the list of HomeKit ADK project authors.
 
-#include <FreeRTOS.h>
-#include <task.h>
+#include <ti/devices/cc32xx/inc/hw_types.h>
+#include <ti/devices/cc32xx/driverlib/prcm.h>
+#include <ti/devices/cc32xx/driverlib/rom_map.h>
 
 #include "HAPPlatform.h"
 
@@ -15,30 +16,29 @@ static const HAPLogObject logObject = { .subsystem = kHAPPlatform_LogSubsystem, 
 
 HAPTime HAPPlatformClockGetCurrent(void)
 {
-    static HAPTime previousNow;
-    TimeOut_t xCurrentTime = { 0 };
-    uint64_t ullTickCount = 0ull;
+    static HAPTime previousNow = 0;
 
-    // Get the current tick count and overflow count.
-    vTaskInternalSetTimeOutState(&xCurrentTime);
+    // The CC32xx provides an RTC mechanism using a set of HIB registers in
+    // conjunction with a 48-bit always-on Slow Clock Counter (SCC) running at
+    // 32.768 kHz. RTC registers can be accessed from the 32.768 kHz clock
+    // domain (HIB1P2) or 40 MHz clock domain (HIB3P3). RTC registers in the
+    // 40 MHz domain are automatically latched, but we need to read the SCC
+    // three times and compare values to ensure we are correctly synchronized
+    // with the 32.768 kHz RTC when both clocks are exactly aligned.
+    uint64_t scc[3];
+    for (size_t i = 0; i < 3; ++i)
+        scc[i] = MAP_PRCMSlowClkCtrFastGet();
 
-    // Adjust the tick count for the number of times a TickType_t has overflowed.
-    // portMAX_DELAY should be the maximum value of a TickType_t.
-    ullTickCount = (uint64_t) (xCurrentTime.xOverflowCount) << (sizeof(TickType_t) * 8);
-
-    // Add the current tick count.
-    ullTickCount += xCurrentTime.xTimeOnEntering;
-
-    // Convert to milliseconds.
-    HAPTime now = ullTickCount / portTICK_PERIOD_MS;
+    // Select the SCC value which matches in at least two of the reads.
+    HAPTime now = (scc[1] - scc[0] <= 1 ? scc[1] : scc[2]) * 1000ull / 32768ull;
 
     if (now < previousNow) {
-        HAPLog(&logObject, "Time jumped backwards by %lu ms.", (unsigned long) (previousNow - now));
+        HAPLogFault(&logObject, "Time jumped backwards by %llu ms.", previousNow - now);
         HAPFatalError();
     }
 
     if (now & (1ull << 63)) {
-        HAPLog(&logObject, "Time overflowed (capped at 2^63 - 1).");
+        HAPLogFault(&logObject, "Time overflowed (capped at 2^63 - 1).");
         HAPFatalError();
     }
 
