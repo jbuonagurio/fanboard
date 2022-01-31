@@ -198,18 +198,20 @@ void LocalProgramStart(void)
     /* Set the NVIC VTable base. */
     MAP_IntVTableBaseSet((unsigned long)&__ram_vectors[0]);
 
+    /* Call MCU initialization routine. */
+    MAP_PRCMCC3200MCUInit();
+
     /* Call the entry point for the application. */
     extern int main(void);
     main();
 }
 
 /**
- * This is the code that gets called when the processor first starts execution
- * following a reset event.  Only the absolutely necessary set is performed,
- * after which the application supplied entry() routine is called.  Any fancy
- * actions (such as making decisions based on the reset cause register, and
- * resetting the bits in that register) are left solely in the hands of the
- * application.
+ * Called when the processor first starts execution following a reset event.
+ * Set stack pointer based on the stack value stored in the vector table.
+ * This is necessary to ensure that the application is using the correct
+ * stack when using a debugger since a reset within the debugger will
+ * load the stack pointer from the bootloader's vector table at address '0'.
  */
 void __attribute__((naked)) Reset_Handler(void)
 {

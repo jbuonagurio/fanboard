@@ -496,9 +496,8 @@ const uint_least8_t Watchdog_count = BOARD_WATCHDOGCOUNT;
 // Perform any board-specific initialization needed at startup.
 void Board_init(void)
 {
-    PRCMCC3200MCUInit();
     Power_init();
-
+    
     // Enable DTHE peripheral clocks for CRC.
     Power_setDependency(PowerCC32XX_PERIPH_DTHE);
     PRCMPeripheralReset(PRCM_DTHE);
