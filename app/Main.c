@@ -1,4 +1,4 @@
-//  Copyright 2021 John Buonagurio
+//  Copyright 2022 John Buonagurio
 //
 //  Distributed under the Boost Software License, Version 1.0.
 //
@@ -28,6 +28,10 @@
 #include <HAPPlatformServiceDiscovery+Init.h>
 #include <HAPPlatformSyslog+Init.h>
 #include <HAPPlatformTCPStreamManager+Init.h>
+
+#include <ti/devices/cc32xx/inc/hw_types.h>
+#include <ti/devices/cc32xx/driverlib/prcm.h>
+#include <ti/devices/cc32xx/driverlib/rom_map.h>
 
 #include <ti/drivers/apps/LED.h>
 #include <ti/drivers/net/wifi/simplelink.h>
@@ -312,6 +316,8 @@ void MainTask(void *pvParameters)
         }
     }
     
+    PrintDeviceInfo();
+
     PlatformInitialize();
 
     // Perform Application-specific initializations such as setting up callbacks
@@ -382,6 +388,18 @@ int main(void)
     BaseType_t rc;
     Board_init();
     
+    unsigned long sysResetCause = PRCMSysResetCauseGet();
+    switch (sysResetCause) {
+    case PRCM_POWER_ON:   HAPLogInfo(&kHAPLog_Default, "Reset (PRCM_POWER_ON).");      break;
+    case PRCM_LPDS_EXIT:  HAPLogInfo(&kHAPLog_Default, "Reset (PRCM_LPDS_EXIT).");     break;
+    case PRCM_CORE_RESET: HAPLogInfo(&kHAPLog_Default, "Reset (PRCM_CORE_RESET).");    break;
+    case PRCM_MCU_RESET:  HAPLogInfo(&kHAPLog_Default, "Reset (PRCM_MCU_RESET).");     break;
+    case PRCM_WDT_RESET:  HAPLogInfo(&kHAPLog_Default, "Reset (PRCM_WDT_RESET).");     break;
+    case PRCM_SOC_RESET:  HAPLogInfo(&kHAPLog_Default, "Reset (PRCM_SOC_RESET).");     break;
+    case PRCM_HIB_EXIT:   HAPLogInfo(&kHAPLog_Default, "Reset (PRCM_HIB_EXIT).");      break;
+    default:              HAPLogInfo(&kHAPLog_Default, "Reset (%lu).", sysResetCause); break;
+    }
+
     // Enable SEGGER SystemView.
     //traceSTART();
 
