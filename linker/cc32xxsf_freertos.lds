@@ -77,11 +77,11 @@ SECTIONS
         CREATE_OBJECT_SYMBOLS
         *(.text)
         *(.text.*)
-        . = ALIGN(0x4);
+        . = ALIGN(4);
         KEEP(*(.ctors))
-        . = ALIGN(0x4);
+        . = ALIGN(4);
         KEEP(*(.dtors))
-        . = ALIGN(0x4);
+        . = ALIGN(4);
         __init_array_start = .;
         KEEP(*(.init_array*))
         __init_array_end = .;
@@ -105,13 +105,18 @@ SECTIONS
         __data_end__ = .;
     } > REGION_DATA AT> REGION_TEXT
 
-    .ARM.exidx : {
+    /**
+     * .ARM.exidx and .ARM.extab are AAPCS sections containing stack unwinding
+     * information. Using 8 byte alignment to prevent .data section overlap.
+     */
+
+    .ARM.exidx : ALIGN(8) {
         __exidx_start = .;
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
         __exidx_end = .;
     } > REGION_ARM_EXIDX AT> REGION_ARM_EXIDX
 
-    .ARM.extab : {
+    .ARM.extab : ALIGN(8) {
         *(.ARM.extab* .gnu.linkonce.armextab.*)
     } > REGION_ARM_EXTAB AT> REGION_ARM_EXTAB
 
@@ -131,7 +136,7 @@ SECTIONS
         __heap_end__ = .;
     } > REGION_HEAP AT> REGION_HEAP
 
-    .stack (NOLOAD) : ALIGN(0x8) {
+    .stack (NOLOAD) : ALIGN(8) {
         __stack = .;
         KEEP(*(.stack))
         . += STACK_SIZE;
