@@ -125,7 +125,7 @@ void HTTPRequestHandler(SlNetAppRequest_t *pNetAppRequest,
     }
 
     for (size_t i = 0; i < HAPArrayCount(httpEndpoints); ++i) {
-        if (httpEndpoints[i].method == pNetAppRequest->Type && strcmp(httpEndpoints[i].uri, sRequest.requestURI) == 0) {
+        if (httpEndpoints[i].method == pNetAppRequest->Type && sRequest.requestURI && strcmp(httpEndpoints[i].uri, sRequest.requestURI) == 0) {
             pNetAppResponse->Status = SL_NETAPP_RESPONSE_PENDING;
             pNetAppResponse->ResponseData.pMetadata = NULL;
             pNetAppResponse->ResponseData.MetadataLen = 0;
