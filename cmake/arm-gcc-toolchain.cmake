@@ -11,12 +11,14 @@ set(CMAKE_ASM_COMPILER arm-none-eabi-gcc CACHE STRING "" FORCE)
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
+# -mthumb
+#     Generate ARMv7E-M Thumb instructions.
 # -mcpu=cortex-m4+nofp
 #     Generate code for Arm Cortex-M4 without FPU.
 # -mfloat-abi=soft
 #     Use software library functions for floating-point operations.
-# -mthumb
-#     Generate ARMv7E-M Thumb instructions.
+# -mabi=aapcs
+#     Use ARM Architecture Procedure Calling Standard (AAPCS) ABI.
 # --specs=nano.specs
 #     Link with newlib-nano.
 # -ffunction-sections
@@ -33,9 +35,9 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 #     Generate an extra file that specifies the maximum amount of
 #     stack used, on a per-function basis.
 set(CMAKE_C_FLAGS_INIT
-    "-mcpu=cortex-m4+nofp -mfloat-abi=soft -mthumb --specs=nano.specs -ffunction-sections -fdata-sections -ffreestanding -fmerge-constants -fstack-usage")
+    "-mthumb -mcpu=cortex-m4+nofp -mfloat-abi=soft -mabi=aapcs --specs=nano.specs -ffunction-sections -fdata-sections -ffreestanding -fmerge-constants -fstack-usage")
 set(CMAKE_CXX_FLAGS_INIT
-    "-mcpu=cortex-m4+nofp -mfloat-abi=soft -mthumb --specs=nano.specs -ffunction-sections -fdata-sections -ffreestanding -fmerge-constants -fstack-usage")
+    "-mthumb -mcpu=cortex-m4+nofp -mfloat-abi=soft -mabi=aapcs --specs=nano.specs -ffunction-sections -fdata-sections -ffreestanding -fmerge-constants -fstack-usage")
 
 # -nostartfiles
 #     Do not use the standard system startup files when linking.
@@ -57,7 +59,7 @@ set(CMAKE_CXX_FLAGS_INIT
 #     Print used size, total size and used size of memory regions
 #     created with the MEMORY command.
 set(CMAKE_EXE_LINKER_FLAGS_INIT
-    "-nostartfiles -lg -lgcc -lc -lm -Wl,--gc-sections,--omagic,--sort-section=alignment,--cref,--print-memory-usage")
+    "-nostartfiles -Wl,--gc-sections,--omagic,--sort-section=alignment,--cref,--print-memory-usage")
 
 # Build configuration flags for C.
 set(CMAKE_C_FLAGS_DEBUG "-Og -g3 -Wall -DDEBUG" CACHE STRING "" FORCE)
