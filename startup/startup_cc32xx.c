@@ -276,3 +276,25 @@ void * __attribute__((used)) _sbrk_r(struct _reent *r, int incr)
 
 char * __attribute__((used))  sbrk(int incr) { return _sbrk_r(_impure_ptr, incr); }
 char * __attribute__((used)) _sbrk(int incr) { return _sbrk_r(_impure_ptr, incr); }
+
+void * __attribute__((used)) _malloc_r(struct _reent *r, size_t size)
+{
+    return pvPortMalloc(size);
+}
+
+void * __attribute__((used)) _calloc_r(struct _reent *r, size_t n, size_t size)
+{
+    void *p = pvPortMalloc(n * size);
+    if (p)
+        memset(p, 0, n * size);
+    return p;
+}
+
+void __attribute__((used)) _free_r(struct _reent *r, void *p)
+{
+    vPortFree(p);
+}
+
+void * __attribute__((used)) malloc(size_t size) { return _malloc_r(_impure_ptr, size); }
+void * __attribute__((used)) calloc(size_t n, size_t size) { return _calloc_r(_impure_ptr, n, size); }
+void __attribute__((used)) free(void *p) { _free_r(_impure_ptr, p); }
