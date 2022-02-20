@@ -5,6 +5,6 @@
     },
     {
         "name": "ARM Clang",
-        "toolchainFile": "${workspaceFolder}/cmake/clang-arm-gcc-toolchain.cmake"
+        "toolchainFile": "${workspaceFolder}/cmake/arm-clang-toolchain.cmake"
     }
 ]
