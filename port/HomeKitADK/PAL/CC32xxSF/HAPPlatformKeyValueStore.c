@@ -125,7 +125,7 @@ HAPError HAPPlatformKeyValueStoreGet(
 
     // Return the size of the output buffer.
     *numBytes = maxBytes;
-    retval = sl_FsClose(handle, 0, 0, 0);
+    sl_FsClose(handle, 0, 0, 0);
     return kHAPError_None;
 }
 
@@ -176,7 +176,7 @@ HAPError HAPPlatformKeyValueStoreSet(
         return kHAPError_Unknown;
     }
 
-    retval = sl_FsClose(handle, 0, 0, 0);
+    sl_FsClose(handle, 0, 0, 0);
     return kHAPError_None;
 }
 
