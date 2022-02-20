@@ -10,11 +10,17 @@
 #include <HAP.h>
 #include <HAP+Internal.h>
 
+#include <ti/devices/cc32xx/inc/hw_hib1p2.h>
+#include <ti/devices/cc32xx/inc/hw_hib3p3.h>
+#include <ti/devices/cc32xx/inc/hw_ints.h>
+#include <ti/devices/cc32xx/inc/hw_memmap.h>
+#include <ti/devices/cc32xx/inc/hw_types.h>
+
+#include <ti/devices/cc32xx/driverlib/prcm.h>
+#include <ti/devices/cc32xx/driverlib/rom_map.h>
+
 #include <ti/drivers/net/wifi/simplelink.h>
 #include <ti/drivers/net/wifi/slnetifwifi.h>
-#include <ti/devices/cc32xx/driverlib/rom_map.h>
-#include <ti/devices/cc32xx/inc/hw_types.h>
-#include <ti/devices/cc32xx/driverlib/prcm.h>
 
 #include <FreeRTOS.h>
 #include <task.h>
@@ -164,4 +170,12 @@ void RestoreFactoryImage(void)
     sl_Stop(200U);
     vTaskDelay(pdMS_TO_TICKS(500UL));
     MAP_PRCMHibernateCycleTrigger();
+}
+
+// Read system retention registers to check whether a factory restore occurred.
+// See: demos/local_ota/local_ota_task.c
+bool RestoreFactoryImageComplete()
+{
+    return ((HWREG(HIB3P3_BASE + HIB3P3_O_MEM_HIB_REG0) & 0b10000000) != 0) &&
+           ((HWREG(HIB1P2_BASE + HIB1P2_O_SOP_SENSE_VALUE) & 0b00000001) != 0);
 }
