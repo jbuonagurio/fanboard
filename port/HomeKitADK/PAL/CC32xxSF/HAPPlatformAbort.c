@@ -13,6 +13,7 @@
 #include <FreeRTOS.h>
 #include <task.h>
 
+#include <ti/devices/cc32xx/inc/hw_nvic.h>
 #include <ti/devices/cc32xx/inc/hw_types.h>
 #include <ti/devices/cc32xx/driverlib/prcm.h>
 #include <ti/devices/cc32xx/driverlib/rom_map.h>
@@ -21,6 +22,10 @@
 HAP_NORETURN
 void HAPPlatformAbort(void)
 {
+    // Set a breakpoint if debugger is connected (DHCSR[C_DEBUGEN] == 1).
+    if ((*(volatile uint32_t *)NVIC_DBG_CTRL) & NVIC_DBG_CTRL_C_DEBUGEN)
+        __asm("bkpt 1");
+
     // Stop the NWP.
     sl_Stop(200U);
 
