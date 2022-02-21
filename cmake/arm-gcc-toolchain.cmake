@@ -37,7 +37,9 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 set(CMAKE_C_FLAGS_INIT
     "-mthumb -mcpu=cortex-m4+nofp -mfloat-abi=soft -mabi=aapcs --specs=nano.specs -ffunction-sections -fdata-sections -ffreestanding -fmerge-constants -fstack-usage")
 set(CMAKE_CXX_FLAGS_INIT
-    "-mthumb -mcpu=cortex-m4+nofp -mfloat-abi=soft -mabi=aapcs --specs=nano.specs -ffunction-sections -fdata-sections -ffreestanding -fmerge-constants -fstack-usage")
+    "-mthumb -mcpu=cortex-m4+nofp -mfloat-abi=soft -mabi=aapcs --specs=nano.specs -ffunction-sections -fdata-sections -ffreestanding -fmerge-constants -fstack-usage -fno-exceptions -fno-rtti")
+set(CMAKE_ASM_FLAGS_INIT
+    "-x assembler-with-cpp -mthumb -mcpu=cortex-m4+nofp -mfloat-abi=soft")
 
 # -nostartfiles
 #     Do not use the standard system startup files when linking.
@@ -59,16 +61,16 @@ set(CMAKE_CXX_FLAGS_INIT
 #     Print used size, total size and used size of memory regions
 #     created with the MEMORY command.
 set(CMAKE_EXE_LINKER_FLAGS_INIT
-    "-nostartfiles -Wl,--gc-sections,--omagic,--sort-section=alignment,--cref,--print-memory-usage")
+    "-nostartfiles -lc_nano -Wl,--gc-sections,--omagic,--sort-section=alignment,--cref,--print-memory-usage")
 
 # Build configuration flags for C.
-set(CMAKE_C_FLAGS_DEBUG "-Og -g3 -Wall -DDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_DEBUG "-Og -g3 -Wall" CACHE STRING "" FORCE)
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall" CACHE STRING "" FORCE)
 set(CMAKE_C_FLAGS_MINSIZEREL "-Os -Wall" CACHE STRING "" FORCE)
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "" FORCE)
 
 # Build configuration flags for C++.
-set(CMAKE_CXX_FLAGS_DEBUG "-Og -g3 -Wall -DDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_DEBUG "-Og -g3 -Wall" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os -Wall" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "" FORCE)
