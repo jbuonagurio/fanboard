@@ -1,32 +1,11 @@
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR ARM)
 
-# Use newlib-nano from GNU Arm Embedded toolchain:
-# execute_process(COMMAND arm-none-eabi-gcc -print-sysroot
-#     OUTPUT_VARIABLE CMAKE_SYSROOT
-#     OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(COMMAND clang -print-resource-dir
+    OUTPUT_VARIABLE CMAKE_SYSROOT
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-# Use custom newlib build for armv7em-none-eabi:
-# - newlib-fseek-optimization     DISABLED
-# - newlib-fvwrite-in-streamio    DISABLED
-# - newlib-global-atexit           ENABLED
-# - newlib-io-float               DISABLED
-# - newlib-io-long-double         DISABLED
-# - newlib-io-long-long            ENABLED
-# - newlib-io-pos-args            DISABLED
-# - newlib-io-c99-formats         DISABLED
-# - newlib-multithread            DISABLED
-# - newlib-nano-malloc             ENABLED
-# - newlib-nano-formatted-io       ENABLED
-# - newlib-reent-small             ENABLED
-# - newlib-supplied-syscalls      DISABLED
-# - newlib-unbuf-stream-opt       DISABLED
-# - newlib-wide-orient            DISABLED
-# - nls                           DISABLED
-# - libgloss                      DISABLED
-# - lite-exit                      ENABLED
-
-set(CMAKE_SYSROOT /Applications/LLVM/arm-none-eabi)  
+string(APPEND CMAKE_SYSROOT "/../../clang-runtimes/armv7em_soft_nofp")
 
 set(CMAKE_C_COMPILER clang CACHE STRING "" FORCE)
 set(CMAKE_CXX_COMPILER clang++ CACHE STRING "" FORCE)
@@ -38,13 +17,10 @@ set(CMAKE_ASM_COMPILER_TARGET armv7em-none-eabi)
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
-# -mthumb
+# -mthumb -march=armv7em
 #     Generate ARMv7E-M Thumb instructions.
-# -mcpu=cortex-m4
-# -mfpu=none
+# -mcpu=cortex-m4 -mfpu=none
 #     Generate code for Arm Cortex-M4 without FPU.
-# -mabi=aapcs
-#     Use ARM Architecture Procedure Calling Standard (AAPCS) ABI.
 # -mfloat-abi=soft
 #     Use software library functions for floating-point operations.
 # -ffunction-sections
@@ -55,9 +31,11 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 #     Asserts that program startup is not necessarily at `main`.
 #     Implies `-fno-builtin`.
 set(CMAKE_C_FLAGS_INIT
-    "-mthumb -mcpu=cortex-m4 -mfpu=none -mabi=aapcs -mfloat-abi=soft -ffunction-sections -fdata-sections -ffreestanding")
+    "-mthumb -march=armv7em -mcpu=cortex-m4 -mfpu=none -mfloat-abi=soft -ffunction-sections -fdata-sections -ffreestanding")
 set(CMAKE_CXX_FLAGS_INIT
-    "-mthumb -mcpu=cortex-m4 -mfpu=none -mabi=aapcs -mfloat-abi=soft -ffunction-sections -fdata-sections -ffreestanding")
+    "-mthumb -march=armv7em -mcpu=cortex-m4 -mfpu=none -mfloat-abi=soft -ffunction-sections -fdata-sections -ffreestanding -fno-exceptions -fno-rtti")
+set(CMAKE_ASM_FLAGS_INIT
+    "-x assembler-with-cpp -mthumb -march=armv7em -mcpu=cortex-m4 -mfloat-abi=soft")
 
 # -fuse-ld=lld
 #     Use the LLVM linker.
@@ -77,13 +55,13 @@ set(CMAKE_EXE_LINKER_FLAGS_INIT
     "-fuse-ld=lld -rtlib=compiler-rt -Wl,--gc-sections,--omagic,--sort-section=alignment")
 
 # Build configuration flags for C.
-set(CMAKE_C_FLAGS_DEBUG "-Og -g3 -Wall -DDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_DEBUG "-Og -g3 -Wall" CACHE STRING "" FORCE)
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall" CACHE STRING "" FORCE)
 set(CMAKE_C_FLAGS_MINSIZEREL "-Oz -Wall" CACHE STRING "" FORCE)
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "" FORCE)
 
 # Build configuration flags for C++.
-set(CMAKE_CXX_FLAGS_DEBUG "-Og -g3 -Wall -DDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_DEBUG "-Og -g3 -Wall" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_MINSIZEREL "-Oz -Wall" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "" FORCE)
