@@ -9,7 +9,6 @@
 #include <FreeRTOS.h> // pvPortMalloc
 
 #include <errno.h>
-#include <signal.h>
 
 #include <ti/net/bsd/errnoutil.h>
 #include <ti/net/slneterr.h> 
@@ -157,16 +156,6 @@ void HAPPlatformTCPStreamManagerCreate(HAPPlatformTCPStreamManagerRef tcpStreamM
     }
     for (size_t i = 0; i < tcpStreamManager->maxTCPStreams; i++) {
         InitializeTCPStream(&tcpStreamManager->tcpStreams[i]);
-    }
-
-    // Initialize signal handling.
-    void (*h)(int);
-    h = signal(SIGPIPE, SIG_IGN);
-    if (h == SIG_ERR) {
-        HAPPlatformLogPOSIXError(kHAPLogType_Error,
-                                 "System call 'signal' to ignore signals of type 'SIGPIPE' failed.",
-                                 errno, __func__, HAP_FILE, __LINE__);
-        HAPFatalError();
     }
 }
 
