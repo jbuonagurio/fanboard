@@ -5,7 +5,7 @@
 ##  See accompanying file LICENSE_1_0.txt or copy at
 ##  http://www.boost.org/LICENSE_1_0.txt
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.18)
 
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/arm-gcc-toolchain.cmake")
@@ -25,7 +25,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 #----------------------------------------------------------------------
 
 set(SIMPLELINK_CC32XX_SDK_DIR "" CACHE PATH "Path to SimpleLink CC32xx SDK")
-set(FREERTOS_DIR "${PROJECT_SOURCE_DIR}/external/FreeRTOS-Kernel" CACHE PATH "Path to FreeRTOS Kernel")
+set(FREERTOS_KERNEL_DIR "${PROJECT_SOURCE_DIR}/external/FreeRTOS-Kernel" CACHE PATH "Path to FreeRTOS Kernel")
 set(HOMEKIT_ADK_DIR "${PROJECT_SOURCE_DIR}/external/HomeKitADK" CACHE PATH "Path to HomeKit ADK")
 set(SEGGER_DIR "${PROJECT_SOURCE_DIR}/external/SEGGER" CACHE PATH "Path to SEGGER RTT and SystemView")
 set(MBEDTLS_DIR "${PROJECT_SOURCE_DIR}/external/mbedtls" CACHE PATH "Path to Mbed TLS")
@@ -55,132 +55,55 @@ option(HAP_LOG_SENSITIVE "Enable sensitive information logging in HomeKit ADK" O
 # Application Using JTAG.
 option(ENABLE_SF_DEBUG "Enable the .dbghdr section" OFF)
 
+message(STATUS "CMAKE_C_COMPILER_ID: ${CMAKE_C_COMPILER_ID}")
+message(STATUS "CMAKE_SYSROOT: ${CMAKE_SYSROOT}")
 message(STATUS "HAP_LOG_LEVEL: ${HAP_LOG_LEVEL}")
 message(STATUS "HAP_LOG_REMOTE: ${HAP_LOG_REMOTE}")
 message(STATUS "HAP_LOG_SENSITIVE: ${HAP_LOG_SENSITIVE}")
 message(STATUS "ENABLE_SF_DEBUG: ${ENABLE_SF_DEBUG}")
 
 #----------------------------------------------------------------------
-# Imported Targets
-#----------------------------------------------------------------------
-
-# CC32xx Driverlib
-add_library(ti_devices_cc32xx_driverlib INTERFACE IMPORTED)
-set_property(TARGET ti_devices_cc32xx_driverlib PROPERTY INTERFACE_LINK_LIBRARIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/gcc/Release/driverlib.a")
-set_property(TARGET ti_devices_cc32xx_driverlib PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti")
-
-# Libraries required for /ti/drivers
-add_library(ti_drivers INTERFACE IMPORTED)
-set_property(TARGET ti_drivers PROPERTY INTERFACE_LINK_LIBRARIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/lib/gcc/m4/drivers_cc32xx.a")
-set_property(TARGET ti_drivers PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source")
-
-# Libraries required for /ti/drivers/net/wifi
-add_library(ti_drivers_net_wifi INTERFACE IMPORTED)
-set_property(TARGET ti_drivers_net_wifi PROPERTY INTERFACE_LINK_LIBRARIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/slnetif/gcc/Release/slnetifwifi.a"
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/gcc/rtos/simplelink.a")
-set_property(TARGET ti_drivers_net_wifi PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source"
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/net/bsd")
-
-# Libraries required for /ti/net (SlNetSock)
-add_library(ti_net INTERFACE IMPORTED)
-set_property(TARGET ti_net PROPERTY INTERFACE_LINK_LIBRARIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/net/lib/gcc/m4/slnetsock_release.a")
-set_property(TARGET ti_net PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source")
-
-# Libraries required for /ti/net/mqtt
-add_library(ti_net_mqtt INTERFACE IMPORTED)
-set_property(TARGET ti_net_mqtt PROPERTY INTERFACE_LINK_LIBRARIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/net/mqtt/lib/gcc/m4/mqtt_release.a")
-set_property(TARGET ti_net_mqtt PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source")
-
-# Libraries required for /ti/net/sntp
-add_library(ti_net_sntp INTERFACE IMPORTED)
-set_property(TARGET ti_net_sntp PROPERTY INTERFACE_LINK_LIBRARIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/net/sntp/lib/gcc/m4/sntp_release.a")
-set_property(TARGET ti_net_sntp PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source")
-
-# Libraries required for /ti/net/utils (ClockSync, Map, StrMpl)
-add_library(ti_net_utils INTERFACE IMPORTED)
-set_property(TARGET ti_net_utils PROPERTY INTERFACE_LINK_LIBRARIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/net/utils/gcc/Release/net_utils.a")
-set_property(TARGET ti_net_utils PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source")
-
-# Libraries required for /ti/display (Display)
-add_library(ti_display INTERFACE IMPORTED)
-set_property(TARGET ti_display PROPERTY INTERFACE_LINK_LIBRARIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/grlib/lib/gcc/m4/grlib.a"
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/display/lib/gcc/m4/display.a")
-set_property(TARGET ti_display PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source")
-
-# Libraries required for /ti/utils/runtime (Log)
-add_library(ti_utils_runtime INTERFACE IMPORTED)
-set_property(TARGET ti_utils_runtime PROPERTY INTERFACE_LINK_LIBRARIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/loggers/drivers/lib/gcc/m4/loggers.a"
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/loggers/utils/lib/gcc/m4/loggers_release.a"
-    "${SIMPLELINK_CC32XX_SDK_DIR}/ti/utils/runtime/lib/gcc/m4/runtime_release.a")
-set_property(TARGET ti_utils_runtime PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-    "${SIMPLELINK_CC32XX_SDK_DIR}/source")
-
-#----------------------------------------------------------------------
 # Target: SEGGER RTT
 #----------------------------------------------------------------------
 
 add_library(segger_rtt
+    "${SEGGER_DIR}/RTT/SEGGER_RTT_ASM_ARMv7M.S"
     "${SEGGER_DIR}/RTT/SEGGER_RTT.c"
     "${SEGGER_DIR}/RTT/SEGGER_RTT_printf.c")
-
-target_include_directories(segger_rtt PUBLIC
-    "${SEGGER_DIR}/RTT"
-    "${SEGGER_DIR}/Config")
-
-target_compile_definitions(segger_rtt PUBLIC -DRTT_USE_ASM=0)
+target_include_directories(segger_rtt
+    PUBLIC
+        "${SEGGER_DIR}/RTT"
+        "${SEGGER_DIR}/Config")
+target_compile_definitions(segger_rtt PRIVATE -DRTT_USE_ASM=1)
+set_property(TARGET segger_rtt PROPERTY PREFIX "")
 
 #----------------------------------------------------------------------
 # Target: SEGGER SystemView
 #----------------------------------------------------------------------
 
-add_library(segger_sysview
-    "${SEGGER_DIR}/SYSVIEW/SEGGER_SYSVIEW.c")
-
-target_include_directories(segger_sysview PUBLIC
+add_library(segger_sysview)
+target_sources(segger_sysview
+    PRIVATE
+        "${SEGGER_DIR}/SYSVIEW/SEGGER_SYSVIEW.c"
+    INTERFACE
+        "${SEGGER_DIR}/SYSVIEW/SEGGER_SYSVIEW_FreeRTOS.c"
+        "${PROJECT_SOURCE_DIR}/port/SEGGER/SYSVIEW/SEGGER_SYSVIEW_Config_FreeRTOS.c")
+target_include_directories(segger_sysview INTERFACE
     "${SEGGER_DIR}/SYSVIEW"
     "${SEGGER_DIR}/Config")
-
 target_link_libraries(segger_sysview PUBLIC segger_rtt)
+set_property(TARGET segger_sysview PROPERTY PREFIX "")
 
 #----------------------------------------------------------------------
-# Target: FreeRTOS
+# Target: TI-POSIX
 #----------------------------------------------------------------------
 
-# Object library must be used to link to pre-built TI archives.
-# Includes TI POSIX, DPL (Driver Porting Layer) and SEGGER SystemView.
-add_library(freertos OBJECT
-    "${FREERTOS_DIR}/croutine.c"
-    "${FREERTOS_DIR}/event_groups.c"
-    "${FREERTOS_DIR}/list.c"
-    "${FREERTOS_DIR}/queue.c"
-    "${FREERTOS_DIR}/stream_buffer.c"
-    "${FREERTOS_DIR}/tasks.c"
-    "${FREERTOS_DIR}/timers.c"
-    "${FREERTOS_DIR}/portable/GCC/ARM_CM3/port.c"
-    "${FREERTOS_DIR}/portable/MemMang/heap_4.c"
-    # SEGGER SystemView
-    "${SEGGER_DIR}/SYSVIEW/SEGGER_SYSVIEW_FreeRTOS.c"
-    "${PROJECT_SOURCE_DIR}/port/SEGGER/SYSVIEW/SEGGER_SYSVIEW_Config_FreeRTOS.c"
-    # TI POSIX
+# Interface target for FreeRTOS.
+add_library(ti_posix INTERFACE)
+target_sources(ti_posix INTERFACE
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/clock.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/mqueue.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/memory.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/pthread_barrier.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/pthread_cond.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/pthread.c"
@@ -190,7 +113,6 @@ add_library(freertos OBJECT
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/semaphore.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/sleep.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/freertos/timer.c"
-    # TI DPL
     "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/AppHooks_freertos.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/ClockP_freertos.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/DebugP_freertos.c"
@@ -202,15 +124,203 @@ add_library(freertos OBJECT
     "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/SystemP_freertos.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/HwiPCC32XX_freertos.c"
     "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/PowerCC32XX_freertos.c")
-
-target_include_directories(freertos PUBLIC
-    "${PROJECT_SOURCE_DIR}/port/FreeRTOS-Kernel/include"
-    "${FREERTOS_DIR}/include"
-    "${FREERTOS_DIR}/portable/GCC/ARM_CM3"
+target_include_directories(ti_posix INTERFACE
     "${SIMPLELINK_CC32XX_SDK_DIR}/source"
     "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/posix/gcc")
 
-target_link_libraries(freertos PUBLIC segger_sysview)
+#----------------------------------------------------------------------
+# Target: TI DPL (Driver Porting Layer)
+#----------------------------------------------------------------------
+
+# Interface target for FreeRTOS.
+add_library(ti_dpl INTERFACE)
+target_sources(ti_dpl INTERFACE
+    "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/AppHooks_freertos.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/ClockP_freertos.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/DebugP_freertos.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/MutexP_freertos.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/QueueP_freertos.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/SemaphoreP_freertos.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/StaticAllocs_freertos.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/SwiP_freertos.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/SystemP_freertos.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/HwiPCC32XX_freertos.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/kernel/freertos/dpl/PowerCC32XX_freertos.c")
+target_include_directories(ti_dpl INTERFACE
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source")
+
+#----------------------------------------------------------------------
+# Target: FreeRTOS
+#----------------------------------------------------------------------
+
+# Includes SEGGER SystemView, TI POSIX and DPL.
+add_library(freertos
+    "${FREERTOS_KERNEL_DIR}/croutine.c"
+    "${FREERTOS_KERNEL_DIR}/event_groups.c"
+    "${FREERTOS_KERNEL_DIR}/list.c"
+    "${FREERTOS_KERNEL_DIR}/queue.c"
+    "${FREERTOS_KERNEL_DIR}/stream_buffer.c"
+    "${FREERTOS_KERNEL_DIR}/tasks.c"
+    "${FREERTOS_KERNEL_DIR}/timers.c"
+    "${FREERTOS_KERNEL_DIR}/portable/GCC/ARM_CM3/port.c"
+    "${FREERTOS_KERNEL_DIR}/portable/MemMang/heap_4.c")
+target_include_directories(freertos PUBLIC
+    "${PROJECT_SOURCE_DIR}/port/FreeRTOS-Kernel/include"
+    "${FREERTOS_KERNEL_DIR}/include"
+    "${FREERTOS_KERNEL_DIR}/portable/GCC/ARM_CM3")
+target_link_libraries(freertos PUBLIC segger_sysview ti_posix ti_dpl)
+
+#----------------------------------------------------------------------
+# CC32xx Driverlib
+#----------------------------------------------------------------------
+
+add_library(ti_driverlib
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/adc.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/adc.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/aes.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/camera.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/cpu.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/crc.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/des.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/flash.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/gpio.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/hwspinlock.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/i2c.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/interrupt.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/i2s.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/pin.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/prcm.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/sdhost.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/shamd5.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/spi.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/systick.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/timer.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/uart.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/udma.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/utils.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib/wdt.c")
+target_include_directories(ti_driverlib
+    PUBLIC
+        "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti"
+    PRIVATE
+        "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx/driverlib"
+        "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/devices/cc32xx")
+
+# cpu.c, utils.c
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    target_compile_definitions(ti_driverlib PRIVATE -Dgcc)
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    target_compile_definitions(ti_driverlib PRIVATE -Dticlang)
+endif()
+
+set_property(TARGET ti_driverlib PROPERTY COMPILE_OPTIONS "-O0")
+set_property(TARGET ti_driverlib PROPERTY PREFIX "")
+
+#----------------------------------------------------------------------
+# CC32xx Drivers
+#----------------------------------------------------------------------
+
+add_library(ti_drivers
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/ADC.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/adc/ADCCC32XX.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/apps/Button.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/apps/LED.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/Camera.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/camera/CameraCC32XXDMA.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/Capture.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/capture/CaptureCC32XX.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/crypto/CryptoCC32XX.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/cryptoutils/utils/CryptoUtils.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/dma/UDMACC32XX.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/GPIO.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/gpio/GPIOCC32XX.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/I2C.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/i2c/I2CCC32XX.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/I2S.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/i2s/I2SCC32XX.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/ITM.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/itm/ITMCC32XX.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/NVS.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/nvs/NVSRAM.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/nvs/NVSSPI25X.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/power/PowerCC32XX_asm.sm4"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/power/PowerCC32XX.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/PWM.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/pwm/PWMTimerCC32XX.c"
+    #"${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/SD.c"
+    #"${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/sd/SDHostCC32XX.c"
+    #"${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/sd/SDSPI.c"
+    #"${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/SDFatFS.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/SPI.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/spi/SPICC32XXDMA.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/Timer.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/timer/TimerCC32XX.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/UART.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/uart/UARTCC32XX.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/uart/UARTCC32XXDMA.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/UART2.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/uart2/UART2CC32XX.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/utils/List.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/utils/Random.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/utils/RingBuf.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/utils/StructRingBuf.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/Watchdog.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/watchdog/WatchdogCC32XX.c")
+set_property(SOURCE
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/power/PowerCC32XX_asm.sm4"
+    APPEND PROPERTY LANGUAGE ASM)
+target_include_directories(ti_drivers PUBLIC
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source")
+target_compile_definitions(ti_drivers PUBLIC
+    -DUSE_CC3220_ROM_DRV_API
+    -DDeviceFamily_CC3220)
+set_property(TARGET ti_drivers PROPERTY PREFIX "")
+
+#----------------------------------------------------------------------
+# CC32xx Wi-Fi Drivers
+#----------------------------------------------------------------------
+
+add_library(ti_drivers_net_wifi
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/slnetif/slnetifwifi.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/slnetif/slwificonn.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/source/device.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/source/driver.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/source/flowcont.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/source/fs.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/source/netapp.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/source/netcfg.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/source/netutil.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/source/nonos.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/source/sl_socket.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/source/spawn.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/source/wlan.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/porting/cc_pal.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/eventreg.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/drivers/net/wifi/source/wlanconfig.c")
+target_include_directories(ti_drivers_net_wifi PUBLIC
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source")
+target_compile_definitions(ti_drivers_net_wifi PUBLIC
+    -DSL_SUPPORT_IPV6
+    -DSL_PLATFORM_MULTI_THREADED)
+target_link_libraries(ti_drivers_net_wifi PUBLIC freertos)
+set_property(TARGET ti_drivers_net_wifi PROPERTY PREFIX "")
+
+#----------------------------------------------------------------------
+# CC32xx Network Drivers
+#----------------------------------------------------------------------
+
+add_library(ti_net
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/net/bsd/netdb.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/net/bsd/socket.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/net/bsd/errnoutil.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/net/slnetsock.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/net/slnetconn.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/net/slnetutils.c"
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source/ti/net/slnetif.c")
+target_include_directories(ti_net PUBLIC
+    "${SIMPLELINK_CC32XX_SDK_DIR}/source")
+target_link_libraries(ti_net PUBLIC freertos)
+set_property(TARGET ti_net PROPERTY PREFIX "")
 
 #----------------------------------------------------------------------
 # Target: Mbed TLS
@@ -283,7 +393,6 @@ add_library(mbedcrypto
     "${MBEDTLS_DIR}/library/version.c"
     "${MBEDTLS_DIR}/library/version_features.c"
     "${MBEDTLS_DIR}/library/xtea.c"
-
     # Port
     "${PROJECT_SOURCE_DIR}/port/mbedtls/library/entropy_poll.c"
     "${PROJECT_SOURCE_DIR}/port/mbedtls/library/platform_memory.c")
@@ -292,7 +401,8 @@ target_include_directories(mbedcrypto PUBLIC
     "${PROJECT_SOURCE_DIR}/port/mbedtls/include"
     "${MBEDTLS_DIR}/include")
 
-# For sl_NetUtilGet(SL_NETUTIL_TRUE_RANDOM), pvPortCalloc, vPortFree.
+# entropy_poll.c: ti_drivers_net_wifi (sl_NetUtilGet)
+# platform_memory.c: freertos (pvPortCalloc, vPortFree)
 target_link_libraries(mbedcrypto PUBLIC ti_drivers_net_wifi freertos)
 
 #----------------------------------------------------------------------
@@ -357,7 +467,6 @@ add_library(homekitadk
     "${HOMEKIT_ADK_DIR}/PAL/HAPLog.c"
     "${HOMEKIT_ADK_DIR}/PAL/HAPPlatformSystemInit.c"
     "${HOMEKIT_ADK_DIR}/PAL/Crypto/MbedTLS/HAPMbedTLS.c"
-    
     # Port
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatform.c"
     "${PROJECT_SOURCE_DIR}/port/HomeKitADK/PAL/CC32xxSF/HAPPlatformAbort.c"
@@ -385,12 +494,11 @@ target_include_directories(homekitadk PUBLIC
     "${HOMEKIT_ADK_DIR}/HAP")
 
 target_link_libraries(homekitadk PUBLIC
+    ti_driverlib
     freertos
     ti_drivers_net_wifi
     ti_drivers
-    ti_net_utils
     ti_net
-    ti_devices_cc32xx_driverlib
     mbedcrypto)
 
 if(HAP_LOG_LEVEL STREQUAL "None")
@@ -444,15 +552,15 @@ target_sources(${PROJECT_NAME} PRIVATE
     "${PROJECT_SOURCE_DIR}/app/OTA.c"
     "${PROJECT_SOURCE_DIR}/app/UART.c"
     "${PROJECT_SOURCE_DIR}/app/Utilities.c"
+    "${PROJECT_SOURCE_DIR}/app/Syscalls.c"
     "${STARTUP_FILE}")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
+    ti_driverlib
     freertos
     ti_drivers_net_wifi
     ti_drivers
-    ti_net_utils
     ti_net
-    ti_devices_cc32xx_driverlib
     homekitadk
     multipart_parser)
 
