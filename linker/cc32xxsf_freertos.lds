@@ -105,11 +105,17 @@ SECTIONS
         __data_end__ = .;
     } > REGION_DATA AT> REGION_TEXT
     
-    .ARM.exidx : {
+    PROVIDE_HIDDEN(__exidx_start = .);
+    /DISCARD/ : {
+        *(.ARM.exidx* .gnu.linkonce.armexidx.*)
+    }
+    PROVIDE_HIDDEN(__exidx_end = .);
+    
+    /* .ARM.exidx : {
         PROVIDE_HIDDEN(__exidx_start = .);
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
         PROVIDE_HIDDEN(__exidx_end = .);
-    } > REGION_ARM_EXIDX AT> REGION_ARM_EXIDX
+    } > REGION_ARM_EXIDX AT> REGION_ARM_EXIDX */
     
     .ARM.extab : {
         *(.ARM.extab* .gnu.linkonce.armextab.*)
