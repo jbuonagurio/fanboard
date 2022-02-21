@@ -9,6 +9,7 @@
 #include <FreeRTOS.h> // pvPortMalloc
 
 #include <errno.h>
+#include <signal.h>
 
 #include <ti/net/bsd/errnoutil.h>
 #include <ti/net/slneterr.h> 
