@@ -29,6 +29,7 @@
 #include <HAPPlatformSyslog+Init.h>
 #include <HAPPlatformTCPStreamManager+Init.h>
 
+#include <ti/devices/cc32xx/inc/hw_nvic.h>
 #include <ti/devices/cc32xx/inc/hw_types.h>
 #include <ti/devices/cc32xx/driverlib/prcm.h>
 #include <ti/devices/cc32xx/driverlib/rom_map.h>
@@ -369,6 +370,11 @@ void MainTask(void *pvParameters)
 // FreeRTOS hooks.
 //----------------------------------------------------------------------------------------------------------------------
 
+void vApplicationDaemonTaskStartupHook(void)
+{
+    Board_init();
+}
+
 void vApplicationMallocFailedHook(void)
 {
     HAPLogFault(&kHAPLog_Default, "pvPortMalloc failed (%u bytes free).", xPortGetFreeHeapSize());
@@ -376,6 +382,10 @@ void vApplicationMallocFailedHook(void)
 
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
+    // Set a breakpoint if debugger is connected (DHCSR[C_DEBUGEN] == 1).
+    if ((*(volatile uint32_t *)NVIC_DBG_CTRL) & NVIC_DBG_CTRL_C_DEBUGEN)
+        __asm("bkpt 1");
+    
     while (1) {}
 }
 
@@ -386,7 +396,6 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 int main(void)
 {
     BaseType_t rc;
-    Board_init();
     
     unsigned long sysResetCause = PRCMSysResetCauseGet();
     switch (sysResetCause) {
