@@ -89,7 +89,7 @@ SECTIONS
         *(.fini*)
     } > REGION_TEXT AT> REGION_TEXT
 
-    PROVIDE (__etext = .);
+    PROVIDE(__etext = .);
 
     .rodata : {
         *(.rodata)
@@ -104,19 +104,14 @@ SECTIONS
         . = ALIGN(4);
         __data_end__ = .;
     } > REGION_DATA AT> REGION_TEXT
-
-    /**
-     * .ARM.exidx and .ARM.extab are AAPCS sections containing stack unwinding
-     * information. Using 8 byte alignment to prevent .data section overlap.
-     */
-
-    .ARM.exidx : ALIGN(8) {
-        __exidx_start = .;
+    
+    .ARM.exidx : {
+        PROVIDE_HIDDEN(__exidx_start = .);
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-        __exidx_end = .;
+        PROVIDE_HIDDEN(__exidx_end = .);
     } > REGION_ARM_EXIDX AT> REGION_ARM_EXIDX
-
-    .ARM.extab : ALIGN(8) {
+    
+    .ARM.extab : {
         *(.ARM.extab* .gnu.linkonce.armextab.*)
     } > REGION_ARM_EXTAB AT> REGION_ARM_EXTAB
 
