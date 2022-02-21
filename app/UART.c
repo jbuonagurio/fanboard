@@ -232,8 +232,8 @@ static void FlushBuffers(UART_Handle handle)
 // Calculate 16-bit CRC-CCITT (polynomial 0x1021, seed 0xFFFF) for serial packets.
 static inline uint16_t CRC16(void *data, uint32_t len)
 {
-    CRCConfigSet(DTHE_BASE, CRC_CFG_INIT_1 | CRC_CFG_TYPE_P1021 | CRC_CFG_SIZE_8BIT);
-    uint16_t crc = (uint16_t)CRCDataProcess(DTHE_BASE, data, len, CRC_CFG_SIZE_8BIT);
+    MAP_CRCConfigSet(DTHE_BASE, CRC_CFG_INIT_1 | CRC_CFG_TYPE_P1021 | CRC_CFG_SIZE_8BIT);
+    uint16_t crc = (uint16_t)MAP_CRCDataProcess(DTHE_BASE, data, len, CRC_CFG_SIZE_8BIT);
     return (crc >> 8) | (crc << 8); // Endian swap
 }
 
