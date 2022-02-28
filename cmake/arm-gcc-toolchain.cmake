@@ -77,6 +77,7 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "" FORCE)
 
 set(CMAKE_OBJCOPY arm-none-eabi-objcopy CACHE INTERNAL "")
 set(CMAKE_OBJDUMP arm-none-eabi-objdump CACHE INTERNAL "")
+set(CMAKE_READELF arm-none-eabi-readelf CACHE INTERNAL "")
 set(CMAKE_SIZE arm-none-eabi-size CACHE INTERNAL "")
 
 set(CMAKE_FIND_ROOT_PATH ${CMAKE_SYSROOT} ${CMAKE_PREFIX_PATH})
