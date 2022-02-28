@@ -498,7 +498,7 @@ void Board_init(void)
 {
     Power_init();
     
-    // Enable DTHE peripheral clocks for CRC.
+    // Enable DTHE peripheral clocks for CRC, SHAMD5, AES.
     Power_setDependency(PowerCC32XX_PERIPH_DTHE);
     PRCMPeripheralReset(PRCM_DTHE);
 
