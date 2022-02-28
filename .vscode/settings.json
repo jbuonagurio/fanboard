@@ -1,4 +1,5 @@
 {
+    "search.useIgnoreFiles": false,
     "search.exclude": {
         ".cache/**": true,
         "**/build": true,
@@ -9,7 +10,7 @@
         "**/build": true
     },
     "files.associations": {
-        "*.svd": "xml",
+        "*.svd": "xml"
     },
     "rewrap.wrappingColumn": 72,
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
